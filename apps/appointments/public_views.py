@@ -1,0 +1,176 @@
+import logging
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.db import transaction
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework import serializers as drf_serializers
+
+from apps.accounts.models import Practitioner, Patient
+from apps.appointments.models import Appointment, TimeSlot
+
+logger = logging.getLogger(__name__)
+
+
+# --- Serializers publics (sans JWT) ---
+
+class PublicPractitionerSerializer(drf_serializers.ModelSerializer):
+    specialty_display = drf_serializers.CharField(source="get_specialty_display", read_only=True)
+
+    class Meta:
+        model = Practitioner
+        fields = ["id", "first_name", "last_name", "specialty_display", "booking_page_slug"]
+
+
+class PublicSlotSerializer(drf_serializers.ModelSerializer):
+    class Meta:
+        model = TimeSlot
+        fields = ["id", "start_time", "end_time"]
+
+
+class PublicBookingSerializer(drf_serializers.Serializer):
+    first_name = drf_serializers.CharField(max_length=100)
+    last_name = drf_serializers.CharField(max_length=100)
+    email = drf_serializers.EmailField()
+    phone = drf_serializers.CharField(max_length=20, required=False, allow_blank=True)
+    timeslot_id = drf_serializers.IntegerField()
+    reason = drf_serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
+# --- Vues publiques ---
+
+class PublicPractitionerView(APIView):
+    """
+    GET /book/<slug>/
+    Retourne le profil public + créneaux disponibles.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug):
+        practitioner = get_object_or_404(Practitioner, booking_page_slug=slug, is_active=True)
+
+        # Vérifier que la souscription est active
+        if not practitioner.owner.is_subscription_active:
+            return Response({"error": "Ce praticien n'est pas disponible pour la réservation en ligne."}, status=503)
+
+        now = timezone.now()
+        slots = TimeSlot.objects.filter(
+            practitioner=practitioner,
+            is_available=True,
+            start_time__gte=now,
+        ).order_by("start_time")[:60]  # max 60 créneaux affichés
+
+        return Response({
+            "practitioner": PublicPractitionerSerializer(practitioner).data,
+            "available_slots": PublicSlotSerializer(slots, many=True).data,
+        })
+
+
+class PublicBookingView(APIView):
+    """
+    POST /book/<slug>/book/
+    Prend un RDV sans authentification.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, slug):
+        practitioner = get_object_or_404(Practitioner, booking_page_slug=slug, is_active=True)
+
+        if not practitioner.owner.is_subscription_active:
+            return Response({"error": "Réservation en ligne indisponible."}, status=503)
+
+        serializer = PublicBookingSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            # Récupérer le créneau et le verrouiller
+            try:
+                slot = TimeSlot.objects.select_for_update().get(
+                    pk=data["timeslot_id"],
+                    practitioner=practitioner,
+                    is_available=True,
+                )
+            except TimeSlot.DoesNotExist:
+                return Response({"error": "Ce créneau n'est plus disponible."}, status=409)
+
+            # Créer ou récupérer le patient
+            patient, _ = Patient.objects.get_or_create(
+                practitioner=practitioner,
+                email=data["email"],
+                defaults={
+                    "first_name": data["first_name"],
+                    "last_name": data["last_name"],
+                    "phone": data.get("phone", ""),
+                },
+            )
+
+            # Créer le RDV
+            appointment = Appointment.objects.create(
+                practitioner=practitioner,
+                patient=patient,
+                timeslot=slot,
+                start_time=slot.start_time,
+                end_time=slot.end_time,
+                status=Appointment.STATUS_CONFIRMED,
+                reason=data.get("reason", ""),
+            )
+
+            # Marquer le créneau comme réservé
+            slot.is_available = False
+            slot.save(update_fields=["is_available"])
+
+        # Envoyer confirmation email
+        from apps.notifications.services import EmailService
+        if patient.email:
+            try:
+                EmailService.send_confirmation(appointment)
+            except Exception as e:
+                logger.warning("Email confirmation échoué : %s", e)
+
+        logger.info("Nouveau RDV #%s via page publique (%s)", appointment.pk, slug)
+
+        return Response({
+            "message": "Votre rendez-vous est confirmé !",
+            "appointment": {
+                "id": appointment.pk,
+                "start_time": appointment.start_time,
+                "end_time": appointment.end_time,
+                "practitioner": str(practitioner),
+                "cancellation_token": appointment.cancellation_token,
+            }
+        }, status=201)
+
+
+class PublicConfirmView(APIView):
+    """GET /book/confirm/<token>/ — Patient confirme sa présence via email."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        appointment = get_object_or_404(Appointment, confirmation_token=token)
+        if appointment.status == Appointment.STATUS_CONFIRMED:
+            return Response({"message": "Votre présence est bien confirmée. À bientôt !"})
+        return Response({"error": "Ce rendez-vous ne peut pas être confirmé."}, status=400)
+
+
+class PublicCancelView(APIView):
+    """GET /book/cancel/<token>/ — Patient annule via lien email."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        appointment = get_object_or_404(Appointment, cancellation_token=token)
+        if appointment.status in [Appointment.STATUS_DONE, Appointment.STATUS_CANCELLED]:
+            return Response({"error": "Ce rendez-vous est déjà annulé ou terminé."}, status=400)
+
+        appointment.status = Appointment.STATUS_CANCELLED
+        appointment.save(update_fields=["status", "updated_at"])
+
+        if appointment.timeslot:
+            appointment.timeslot.is_available = True
+            appointment.timeslot.save(update_fields=["is_available"])
+
+        logger.info("RDV #%s annulé via lien public", appointment.pk)
+        return Response({"message": "Votre rendez-vous a bien été annulé."})

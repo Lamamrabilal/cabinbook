@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Réserver un rendez-vous — CabinBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0F1B2D; --teal: #1A7F72; --teal-lt: #E8F5F3;
+      --slate: #4A5568; --border: #D1DCE8; --white: #FFFFFF;
+      --cream: #F8FAFB; --error: #C0392B; --success: #1A7F72;
+    }
+    html { font-size: 16px; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--navy); min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: var(--navy); padding: 1.25rem 2rem; display: flex; align-items: center; gap: 0.75rem; }
+    .logo { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--white); letter-spacing: -0.02em; }
+    .logo span { color: #5DD6C8; }
+    main { flex: 1; max-width: 860px; margin: 0 auto; width: 100%; padding: 2.5rem 1.25rem 4rem; }
+    .practitioner-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; display: flex; gap: 1.5rem; align-items: center; margin-bottom: 2rem; }
+    .avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--teal-lt); display: flex; align-items: center; justify-content: center; font-family: 'DM Serif Display', serif; font-size: 1.75rem; color: var(--teal); flex-shrink: 0; }
+    .practitioner-card h1 { font-family: 'DM Serif Display', serif; font-size: 1.6rem; font-weight: 400; line-height: 1.2; color: var(--navy); }
+    .specialty-badge { display: inline-block; margin-top: 0.4rem; background: var(--teal-lt); color: var(--teal); font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 99px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .stepper { display: flex; gap: 0; margin-bottom: 2rem; }
+    .step { flex: 1; display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 600; color: var(--border); text-transform: uppercase; letter-spacing: 0.06em; }
+    .step.active { color: var(--teal); }
+    .step.done { color: var(--slate); }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; transition: all 0.2s; }
+    .step.active .step-dot { background: var(--teal); border-color: var(--teal); color: var(--white); }
+    .step.done .step-dot { background: var(--slate); border-color: var(--slate); color: var(--white); }
+    .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 0.5rem; }
+    .section-title { font-family: 'DM Serif Display', serif; font-size: 1.25rem; font-weight: 400; color: var(--navy); margin-bottom: 1rem; }
+    .section-sub { font-size: 0.875rem; color: var(--slate); margin-bottom: 1.5rem; }
+    .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .calendar-nav h3 { font-size: 1rem; font-weight: 600; text-transform: capitalize; }
+    .nav-btn { background: none; border: 1px solid var(--border); border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; color: var(--navy); display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+    .nav-btn:hover { background: var(--teal-lt); }
+    .date-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.4rem; margin-bottom: 1.5rem; }
+    .day-label { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 0.5rem; }
+    .date-btn { aspect-ratio: 1; border-radius: 10px; border: 1px solid transparent; background: none; cursor: pointer; font-size: 0.875rem; font-family: 'DM Sans', sans-serif; color: var(--navy); transition: all 0.15s; display: flex; align-items: center; justify-content: center; position: relative; }
+    .date-btn:hover:not(:disabled) { background: var(--teal-lt); border-color: var(--teal); color: var(--teal); }
+    .date-btn.selected { background: var(--teal); color: var(--white); border-color: var(--teal); font-weight: 600; }
+    .date-btn.today { font-weight: 700; }
+    .date-btn.today::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--teal); }
+    .date-btn.today.selected::after { background: var(--white); }
+    .date-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .date-btn.has-slots { border-color: var(--teal-lt); }
+    .slots-section { margin-top: 0.5rem; }
+    .slots-label { font-size: 0.8rem; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem; }
+    .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 0.5rem; }
+    .slot-btn { padding: 0.6rem 0.5rem; border: 1px solid var(--border); border-radius: 10px; background: var(--white); font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500; color: var(--navy); cursor: pointer; text-align: center; transition: all 0.15s; }
+    .slot-btn:hover { border-color: var(--teal); background: var(--teal-lt); color: var(--teal); }
+    .slot-btn.selected { background: var(--teal); color: var(--white); border-color: var(--teal); }
+    .no-slots { color: var(--slate); font-size: 0.875rem; font-style: italic; padding: 1rem 0; }
+    .form-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+    .form-group:last-child { margin-bottom: 0; }
+    label { font-size: 0.82rem; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; }
+    input, textarea { padding: 0.7rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--navy); background: var(--cream); transition: border-color 0.15s; outline: none; }
+    input:focus, textarea:focus { border-color: var(--teal); background: var(--white); }
+    textarea { resize: vertical; min-height: 80px; }
+    .booking-summary { background: var(--teal-lt); border: 1px solid #B2DDD8; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; }
+    .summary-icon { font-size: 1.5rem; }
+    .summary-text { font-size: 0.9rem; line-height: 1.5; }
+    .summary-text strong { color: var(--teal); }
+    .btn-confirm { width: 100%; padding: 1rem; background: var(--teal); color: var(--white); border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; margin-top: 1.5rem; }
+    .btn-confirm:hover { background: #155f55; }
+    .btn-confirm:active { transform: scale(0.99); }
+    .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+    .success-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 3rem 2rem; text-align: center; }
+    .success-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .success-card h2 { font-family: 'DM Serif Display', serif; font-size: 1.75rem; font-weight: 400; margin-bottom: 0.75rem; }
+    .success-card p { color: var(--slate); line-height: 1.6; margin-bottom: 0.5rem; }
+    .cancel-link { display: inline-block; margin-top: 1.5rem; font-size: 0.85rem; color: var(--slate); text-decoration: underline; cursor: pointer; }
+    .error-msg { background: #FDECEA; border: 1px solid #F5C6C2; color: var(--error); border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.875rem; margin-bottom: 1rem; }
+    .loading { text-align: center; padding: 3rem; color: var(--slate); }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 600px) {
+      .practitioner-card { flex-direction: column; text-align: center; }
+      .form-row { grid-template-columns: 1fr; }
+      .stepper { font-size: 0.7rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Cabin<span>Book</span></div>
+</header>
+
+<main id="app">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Chargement…</p>
+  </div>
+</main>
+
+<script>
+const API_BASE = window.location.origin;
+const slug = window.location.pathname.split('/').filter(Boolean)[1];
+
+let state = {
+  step: 1,
+  practitioner: null,
+  slots: [],
+  selectedDate: null,
+  selectedSlot: null,
+  currentMonth: new Date(),
+  appointment: null,
+  error: null,
+};
+
+const fmt = (dt) => new Date(dt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const fmtDate = (dt) => new Date(dt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const fmtMonth = (dt) => dt.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+const isSameDay = (a, b) => a.toDateString() === new Date(b).toDateString();
+const today = new Date();
+
+async function fetchPractitioner() {
+  const res = await fetch(`${API_BASE}/api/public/book/${slug}/`);
+  if (!res.ok) throw new Error("Praticien introuvable ou indisponible.");
+  return res.json();
+}
+
+async function bookAppointment(formData, slotId) {
+  const res = await fetch(`${API_BASE}/api/public/book/${slug}/book/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...formData, timeslot_id: slotId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Une erreur est survenue.");
+  return data;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (state.step === 1) app.innerHTML = renderStep1();
+  else if (state.step === 2) app.innerHTML = renderStep2();
+  else app.innerHTML = renderStep3();
+  attachEvents();
+}
+
+function renderPractitionerCard() {
+  const p = state.practitioner;
+  const initials = (p.first_name[0] + p.last_name[0]).toUpperCase();
+  return `
+    <div class="practitioner-card">
+      <div class="avatar">${initials}</div>
+      <div>
+        <h1>Dr ${p.first_name} ${p.last_name}</h1>
+        <span class="specialty-badge">${p.specialty_display}</span>
+      </div>
+    </div>`;
+}
+
+function renderStepper() {
+  const steps = ['Créneau', 'Coordonnées', 'Confirmation'];
+  return `<div class="stepper">
+    ${steps.map((s, i) => {
+      const n = i + 1;
+      const cls = n < state.step ? 'done' : n === state.step ? 'active' : '';
+      const dot = n < state.step ? '✓' : n;
+      return `
+        <div class="step ${cls}">
+          <div class="step-dot">${dot}</div>
+          <span>${s}</span>
+        </div>
+        ${i < steps.length - 1 ? '<div class="step-line"></div>' : ''}`;
+    }).join('')}
+  </div>`;
+}
+
+function renderStep1() {
+  const slotsOnDate = state.selectedDate
+    ? state.slots.filter(s => isSameDay(state.selectedDate, s.start_time))
+    : [];
+  const daysWithSlots = new Set(state.slots.map(s => new Date(s.start_time).toDateString()));
+  const year = state.currentMonth.getFullYear();
+  const month = state.currentMonth.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const offset = (firstDay + 6) % 7;
+
+  let calCells = '';
+  for (let i = 0; i < offset; i++) calCells += '<div></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const isToday = isSameDay(date, today);
+    const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const hasSlots = daysWithSlots.has(date.toDateString());
+    const isSelected = state.selectedDate && isSameDay(date, state.selectedDate);
+    calCells += `<button
+      class="date-btn${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}${hasSlots ? ' has-slots' : ''}"
+      data-date="${date.toISOString()}"
+      ${isPast || !hasSlots ? 'disabled' : ''}>
+      ${d}
+    </button>`;
+  }
+
+  const slotButtons = slotsOnDate.length
+    ? slotsOnDate.map(s => `
+        <button class="slot-btn${state.selectedSlot?.id === s.id ? ' selected' : ''}" data-slot-id="${s.id}">
+          ${fmt(s.start_time)}
+        </button>`).join('')
+    : `<p class="no-slots">${state.selectedDate ? 'Aucun créneau disponible ce jour.' : 'Sélectionnez une date pour voir les créneaux.'}</p>`;
+
+  return `
+    ${renderPractitionerCard()}
+    ${renderStepper()}
+    ${state.error ? `<div class="error-msg">${state.error}</div>` : ''}
+    <div class="form-card">
+      <p class="section-title">Choisissez une date</p>
+      <div class="calendar-nav">
+        <button class="nav-btn" id="prevMonth">&#8592;</button>
+        <h3>${fmtMonth(state.currentMonth)}</h3>
+        <button class="nav-btn" id="nextMonth">&#8594;</button>
+      </div>
+      <div class="date-grid">
+        ${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => `<div class="day-label">${d}</div>`).join('')}
+        ${calCells}
+      </div>
+      <div class="slots-section">
+        <div class="slots-label">Horaires disponibles</div>
+        <div class="slots-grid">${slotButtons}</div>
+      </div>
+    </div>`;
+}
+
+function renderStep2() {
+  const s = state.selectedSlot;
+  return `
+    ${renderPractitionerCard()}
+    ${renderStepper()}
+    ${state.error ? `<div class="error-msg">${state.error}</div>` : ''}
+    <div class="booking-summary">
+      <div class="summary-icon">📅</div>
+      <div class="summary-text">
+        <strong>${fmtDate(s.start_time)}</strong><br>
+        ${fmt(s.start_time)} – ${fmt(s.end_time)} avec Dr ${state.practitioner.last_name}
+      </div>
+    </div>
+    <div class="form-card">
+      <p class="section-title">Vos coordonnées</p>
+      <p class="section-sub">Un email de confirmation vous sera envoyé après la réservation.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first_name">Prénom *</label>
+          <input id="first_name" type="text" placeholder="Marie" required />
+        </div>
+        <div class="form-group">
+          <label for="last_name">Nom *</label>
+          <input id="last_name" type="text" placeholder="Dupont" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input id="email" type="email" placeholder="marie@exemple.fr" required />
+      </div>
+      <div class="form-group">
+        <label for="phone">Téléphone</label>
+        <input id="phone" type="tel" placeholder="+33 6 12 34 56 78" />
+      </div>
+      <div class="form-group">
+        <label for="reason">Motif de consultation</label>
+        <textarea id="reason" placeholder="Décrivez brièvement votre motif (facultatif)…"></textarea>
+      </div>
+      <button class="btn-confirm" id="submitBtn">Confirmer le rendez-vous →</button>
+    </div>`;
+}
+
+function renderStep3() {
+  const appt = state.appointment;
+  return `
+    ${renderPractitionerCard()}
+    <div class="success-card">
+      <div class="success-icon">✅</div>
+      <h2>Rendez-vous confirmé !</h2>
+      <p>Le <strong>${fmtDate(appt.start_time)}</strong> à <strong>${fmt(appt.start_time)}</strong></p>
+      <p>avec <strong>Dr ${state.practitioner.last_name}</strong></p>
+      <p style="margin-top:1rem;">Un email de confirmation vous a été envoyé.</p>
+      <span class="cancel-link" id="cancelLink">Annuler ce rendez-vous</span>
+    </div>`;
+}
+
+function attachEvents() {
+  document.getElementById('prevMonth')?.addEventListener('click', () => {
+    state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() - 1, 1);
+    render();
+  });
+  document.getElementById('nextMonth')?.addEventListener('click', () => {
+    state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() + 1, 1);
+    render();
+  });
+  document.querySelectorAll('.date-btn:not(:disabled)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.selectedDate = new Date(btn.dataset.date);
+      state.selectedSlot = null;
+      state.error = null;
+      render();
+    });
+  });
+  document.querySelectorAll('.slot-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const slotId = parseInt(btn.dataset.slotId);
+      state.selectedSlot = state.slots.find(s => s.id === slotId);
+      state.error = null;
+      setTimeout(() => { state.step = 2; render(); }, 200);
+    });
+  });
+  document.getElementById('submitBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('submitBtn');
+    const first_name = document.getElementById('first_name').value.trim();
+    const last_name  = document.getElementById('last_name').value.trim();
+    const email      = document.getElementById('email').value.trim();
+    const phone      = document.getElementById('phone').value.trim();
+    const reason     = document.getElementById('reason').value.trim();
+    if (!first_name || !last_name || !email) {
+      state.error = "Veuillez remplir les champs obligatoires (prénom, nom, email).";
+      render(); return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Confirmation en cours…';
+    state.error = null;
+    try {
+      const data = await bookAppointment({ first_name, last_name, email, phone, reason }, state.selectedSlot.id);
+      state.appointment = data.appointment;
+      state.step = 3;
+      render();
+    } catch (err) {
+      state.error = err.message;
+      btn.disabled = false;
+      btn.textContent = 'Confirmer le rendez-vous →';
+      render();
+    }
+  });
+  document.getElementById('cancelLink')?.addEventListener('click', async () => {
+    if (!confirm("Êtes-vous sûr de vouloir annuler ce rendez-vous ?")) return;
+    const token = state.appointment.cancellation_token;
+    await fetch(`${API_BASE}/api/public/book/cancel/${token}/`);
+    document.getElementById('app').innerHTML = `
+      <div class="success-card">
+        <div class="success-icon">❌</div>
+        <h2>Rendez-vous annulé</h2>
+        <p>Votre rendez-vous a bien été annulé. À bientôt !</p>
+      </div>`;
+  });
+}
+
+(async () => {
+  try {
+    const data = await fetchPractitioner();
+    state.practitioner = data.practitioner;
+    state.slots = data.available_slots;
+    render();
+  } catch (err) {
+    document.getElementById('app').innerHTML = `
+      <div class="error-msg" style="margin-top:2rem;">${err.message}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

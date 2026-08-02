@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CabinBook — Zéro no-show. Vraiment.</title>
+  <meta name="description" content="Logiciel de prise de rendez-vous et rappels automatiques pour kinés, ostéos et psychologues libéraux. 29€/mois. Essai gratuit 30 jours." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:    #0F1B2D;
+      --teal:    #1A7F72;
+      --teal-lt: #E8F5F3;
+      --teal-mid:#5DD6C8;
+      --slate:   #4A5568;
+      --border:  #D1DCE8;
+      --white:   #FFFFFF;
+      --cream:   #F8FAFB;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; color: var(--navy); background: var(--white); }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px;
+    }
+    .logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.35rem; color: var(--navy); text-decoration: none;
+    }
+    .logo span { color: var(--teal); }
+    .nav-links { display: flex; align-items: center; gap: 2rem; }
+    .nav-links a { font-size: 0.875rem; color: var(--slate); text-decoration: none; font-weight: 500; }
+    .nav-links a:hover { color: var(--teal); }
+    .btn-nav {
+      background: var(--navy); color: var(--white);
+      padding: 0.5rem 1.25rem; border-radius: 99px;
+      font-size: 0.875rem; font-weight: 600;
+      text-decoration: none; transition: background 0.2s;
+    }
+    .btn-nav:hover { background: var(--teal); color: var(--white); }
+
+    /* ── HERO ── */
+    .hero {
+      background: var(--navy);
+      padding: 6rem 2rem 0;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(26,127,114,0.22) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      display: inline-block;
+      background: rgba(93,214,200,0.12);
+      border: 1px solid rgba(93,214,200,0.3);
+      color: var(--teal-mid);
+      font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.3rem 1rem; border-radius: 99px;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      color: var(--white); line-height: 1.1;
+      max-width: 800px; margin: 0 auto 1.25rem;
+      letter-spacing: -0.02em;
+    }
+    .hero h1 em {
+      font-style: italic; color: var(--teal-mid);
+    }
+    .hero-sub {
+      font-size: 1.1rem; color: rgba(255,255,255,0.6);
+      max-width: 520px; margin: 0 auto 2.5rem; line-height: 1.6;
+    }
+    .hero-cta {
+      display: flex; gap: 1rem; justify-content: center;
+      flex-wrap: wrap; margin-bottom: 4rem;
+    }
+    .btn-primary {
+      background: var(--teal); color: var(--white);
+      padding: 0.9rem 2rem; border-radius: 12px;
+      font-size: 1rem; font-weight: 700;
+      text-decoration: none; transition: all 0.2s;
+      border: none; cursor: pointer;
+    }
+    .btn-primary:hover { background: #155f55; transform: translateY(-1px); }
+    .btn-ghost {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: var(--white);
+      padding: 0.9rem 2rem; border-radius: 12px;
+      font-size: 1rem; font-weight: 600;
+      text-decoration: none; transition: all 0.2s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.15); }
+
+    /* Dashboard preview */
+    .hero-preview {
+      max-width: 900px; margin: 0 auto;
+      background: #1A2D44;
+      border-radius: 16px 16px 0 0;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-bottom: none;
+      padding: 1rem;
+      box-shadow: 0 -20px 60px rgba(26,127,114,0.15);
+    }
+    .preview-bar {
+      display: flex; gap: 6px; margin-bottom: 0.75rem;
+    }
+    .preview-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .preview-screen {
+      background: var(--cream); border-radius: 10px;
+      padding: 1rem; display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 0.75rem; min-height: 240px;
+    }
+    .preview-sidebar {
+      background: var(--navy); border-radius: 8px; padding: 1rem 0.75rem;
+    }
+    .preview-sidebar-logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 0.95rem; color: var(--white); margin-bottom: 1rem;
+    }
+    .preview-nav-item {
+      height: 28px; border-radius: 6px; margin-bottom: 4px;
+      display: flex; align-items: center; padding: 0 8px;
+      font-size: 11px; color: rgba(255,255,255,0.4); gap: 6px;
+    }
+    .preview-nav-item.active {
+      background: rgba(26,127,114,0.3); color: #5DD6C8;
+    }
+    .preview-content { display: flex; flex-direction: column; gap: 0.6rem; }
+    .preview-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+    .preview-stat {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.5rem 0.6rem;
+      border-left: 3px solid var(--teal);
+    }
+    .preview-stat-n { font-size: 20px; font-weight: 700; color: var(--navy); }
+    .preview-stat-l { font-size: 9px; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; }
+    .preview-list {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; flex: 1;
+    }
+    .preview-list-head {
+      padding: 0.5rem 0.75rem; font-size: 11px; font-weight: 700;
+      color: var(--navy); border-bottom: 1px solid var(--border);
+    }
+    .preview-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .preview-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--teal-lt); color: var(--teal);
+      font-size: 9px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .preview-badge {
+      margin-left: auto; padding: 2px 6px; border-radius: 99px;
+      font-size: 9px; font-weight: 700;
+    }
+    .badge-green { background: var(--teal-lt); color: var(--teal); }
+    .badge-amber { background: #FEF3C7; color: #D97706; }
+
+    /* ── SOCIAL PROOF ── */
+    .trust-bar {
+      background: var(--cream); border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex; align-items: center; justify-content: center;
+      gap: 3rem; flex-wrap: wrap;
+    }
+    .trust-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--slate); }
+    .trust-item strong { color: var(--navy); font-weight: 700; }
+
+    /* ── SECTIONS ── */
+    section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-eyebrow {
+      display: inline-block;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--teal); margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+      line-height: 1.2; color: var(--navy);
+      max-width: 560px; margin-bottom: 1rem;
+    }
+    .section-sub { font-size: 1rem; color: var(--slate); max-width: 500px; line-height: 1.7; }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem; margin-top: 3rem;
+    }
+    .feature-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.75rem;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { box-shadow: 0 8px 24px rgba(15,27,45,0.08); transform: translateY(-2px); }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: var(--teal-lt); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .feature-title { font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; }
+    .feature-desc { font-size: 0.875rem; color: var(--slate); line-height: 1.6; }
+
+    /* ── HOW IT WORKS ── */
+    .how-section { background: var(--navy); padding: 5rem 2rem; }
+    .how-inner { max-width: 1100px; margin: 0 auto; }
+    .how-section .section-title { color: var(--white); }
+    .how-section .section-sub { color: rgba(255,255,255,0.5); }
+    .how-steps {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 2rem; margin-top: 3rem;
+    }
+    .how-step { position: relative; }
+    .step-number {
+      font-family: 'DM Serif Display', serif;
+      font-size: 3.5rem; color: rgba(93,214,200,0.15);
+      line-height: 1; margin-bottom: 0.75rem;
+    }
+    .step-title { font-size: 1rem; font-weight: 700; color: var(--white); margin-bottom: 0.5rem; }
+    .step-desc { font-size: 0.875rem; color: rgba(255,255,255,0.5); line-height: 1.6; }
+    .step-connector {
+      position: absolute; top: 1.75rem; right: -1rem;
+      color: rgba(93,214,200,0.3); font-size: 1.5rem;
+    }
+
+    /* ── TESTIMONIALS ── */
+    .testimonials-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem; margin-top: 3rem;
+    }
+    .testimonial-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem;
+    }
+    .stars { color: #F59E0B; font-size: 0.85rem; margin-bottom: 0.75rem; }
+    .testimonial-text {
+      font-size: 0.9rem; color: var(--slate); line-height: 1.7;
+      font-style: italic; margin-bottom: 1rem;
+    }
+    .testimonial-author {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .author-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--teal-lt); color: var(--teal);
+      font-size: 0.8rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .author-name { font-size: 0.85rem; font-weight: 700; color: var(--navy); }
+    .author-title { font-size: 0.75rem; color: var(--slate); }
+
+    /* ── PRICING ── */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem; margin-top: 3rem; align-items: start;
+    }
+    .pricing-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 16px; padding: 2rem;
+      position: relative; transition: box-shadow 0.2s;
+    }
+    .pricing-card.featured {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(26,127,114,0.1);
+    }
+    .popular-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--teal); color: var(--white);
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 0.25rem 0.9rem; border-radius: 99px;
+    }
+    .plan-name { font-size: 0.8rem; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.08em; }
+    .plan-price {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.75rem; color: var(--navy); line-height: 1; margin: 0.75rem 0 0.25rem;
+    }
+    .plan-price span { font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 500; color: var(--slate); }
+    .plan-desc { font-size: 0.85rem; color: var(--slate); margin-bottom: 1.5rem; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 2rem; }
+    .plan-features li { font-size: 0.875rem; color: var(--slate); display: flex; align-items: center; gap: 0.6rem; }
+    .plan-features li::before { content: "✓"; color: var(--teal); font-weight: 700; flex-shrink: 0; }
+    .btn-plan {
+      display: block; width: 100%; text-align: center;
+      padding: 0.8rem; border-radius: 10px; font-size: 0.9rem; font-weight: 700;
+      text-decoration: none; transition: all 0.2s; border: none; cursor: pointer;
+    }
+    .btn-plan-primary { background: var(--teal); color: var(--white); }
+    .btn-plan-primary:hover { background: #155f55; }
+    .btn-plan-outline { background: transparent; border: 1px solid var(--border); color: var(--navy); }
+    .btn-plan-outline:hover { border-color: var(--teal); color: var(--teal); }
+
+    /* ── CTA FINAL ── */
+    .cta-section {
+      background: var(--teal); padding: 5rem 2rem;
+      text-align: center;
+    }
+    .cta-section h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      color: var(--white); margin-bottom: 1rem;
+    }
+    .cta-section p { font-size: 1rem; color: rgba(255,255,255,0.75); margin-bottom: 2rem; }
+    .btn-cta-white {
+      background: var(--white); color: var(--teal);
+      padding: 1rem 2.5rem; border-radius: 12px;
+      font-size: 1rem; font-weight: 700;
+      text-decoration: none; display: inline-block;
+      transition: all 0.2s;
+    }
+    .btn-cta-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--navy); padding: 2.5rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-logo { font-family: 'DM Serif Display', serif; font-size: 1.1rem; color: var(--white); }
+    .footer-logo span { color: var(--teal-mid); }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-links a { font-size: 0.8rem; color: rgba(255,255,255,0.4); text-decoration: none; }
+    .footer-links a:hover { color: rgba(255,255,255,0.8); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .features-grid, .how-steps, .testimonials-grid, .pricing-grid { grid-template-columns: 1fr; }
+      .preview-screen { grid-template-columns: 1fr; }
+      .preview-sidebar { display: none; }
+      .nav-links a { display: none; }
+      .trust-bar { gap: 1.25rem; }
+      .step-connector { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo">Cabin<span>Book</span></a>
+  <div class="nav-links">
+    <a href="#features">Fonctionnalités</a>
+    <a href="#pricing">Tarifs</a>
+    <a href="#testimonials">Avis</a>
+    <a href="#pricing" class="btn-nav">Essai gratuit →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" style="max-width:none; padding-bottom:0;">
+  <div class="hero-eyebrow">Pour kinés · ostéos · psychologues</div>
+  <h1>Fini les patients qui <em>oublient</em> leur rendez-vous.</h1>
+  <p class="hero-sub">CabinBook envoie des rappels automatiques par email et SMS. Vos patients confirment en un clic. Vos créneaux ne se perdent plus.</p>
+  <div class="hero-cta">
+    <a href="#pricing" class="btn-primary">Démarrer — 30 jours gratuits</a>
+    <a href="#features" class="btn-ghost">Voir comment ça marche</a>
+  </div>
+
+  <!-- Mini dashboard preview -->
+  <div class="hero-preview">
+    <div class="preview-bar">
+      <div class="preview-dot" style="background:#FF5F57"></div>
+      <div class="preview-dot" style="background:#FEBC2E"></div>
+      <div class="preview-dot" style="background:#28C840"></div>
+    </div>
+    <div class="preview-screen">
+      <div class="preview-sidebar">
+        <div class="preview-sidebar-logo">Cabin<span style="color:#5DD6C8">Book</span></div>
+        <div class="preview-nav-item active">⬛ Tableau de bord</div>
+        <div class="preview-nav-item">📅 Agenda</div>
+        <div class="preview-nav-item">👥 Patients</div>
+        <div class="preview-nav-item">⚙️ Paramètres</div>
+      </div>
+      <div class="preview-content">
+        <div class="preview-stats">
+          <div class="preview-stat"><div class="preview-stat-n">47</div><div class="preview-stat-l">RDV ce mois</div></div>
+          <div class="preview-stat"><div class="preview-stat-n">4</div><div class="preview-stat-l">Aujourd'hui</div></div>
+          <div class="preview-stat" style="border-left-color:#D97706"><div class="preview-stat-n">12</div><div class="preview-stat-l">En attente</div></div>
+          <div class="preview-stat" style="border-left-color:#C0392B"><div class="preview-stat-n">3</div><div class="preview-stat-l">No-shows</div></div>
+        </div>
+        <div class="preview-list">
+          <div class="preview-list-head">Rendez-vous du jour</div>
+          <div class="preview-row"><div class="preview-avatar">MM</div><div><div style="font-weight:600;color:#0F1B2D">Marie Martin</div><div style="color:#4A5568;font-size:10px">09:00 – 09:45</div></div><span class="preview-badge badge-green">Confirmé</span></div>
+          <div class="preview-row"><div class="preview-avatar">JD</div><div><div style="font-weight:600;color:#0F1B2D">Jean Dupont</div><div style="color:#4A5568;font-size:10px">10:00 – 10:45</div></div><span class="preview-badge badge-green">Confirmé</span></div>
+          <div class="preview-row"><div class="preview-avatar">LP</div><div><div style="font-weight:600;color:#0F1B2D">Lucas Petit</div><div style="color:#4A5568;font-size:10px">14:00 – 14:45</div></div><span class="preview-badge badge-amber">En attente</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAR -->
+<div class="trust-bar">
+  <div class="trust-item">⭐ <strong>4.9/5</strong> sur 120+ avis</div>
+  <div class="trust-item">📉 <strong>–68%</strong> de no-shows en moyenne</div>
+  <div class="trust-item">⚡ <strong>15 min</strong> pour être opérationnel</div>
+  <div class="trust-item">🔒 <strong>RGPD</strong> · Données hébergées en France</div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <span class="section-eyebrow">Fonctionnalités</span>
+  <h2 class="section-title">Tout ce qu'il faut. Rien de superflu.</h2>
+  <p class="section-sub">CabinBook est conçu pour des praticiens libéraux, pas pour des hôpitaux. Simple à prendre en main, efficace dès le premier jour.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📅</div>
+      <div class="feature-title">Page de réservation publique</div>
+      <div class="feature-desc">Un lien à partager à vos patients. Ils voient vos créneaux disponibles et réservent directement, sans vous appeler.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💬</div>
+      <div class="feature-title">Rappels email & SMS automatiques</div>
+      <div class="feature-desc">J-1 avant chaque RDV, vos patients reçoivent un rappel avec un lien pour confirmer ou annuler. Zéro oubli.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Tableau de bord en temps réel</div>
+      <div class="feature-desc">Visualisez votre journée, votre semaine, vos no-shows. Prenez de meilleures décisions sur vos disponibilités.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👥</div>
+      <div class="feature-title">Dossier patient simplifié</div>
+      <div class="feature-desc">Historique des RDV, coordonnées, notes internes. Tout au même endroit, accessible en 2 clics.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏢</div>
+      <div class="feature-title">Multi-praticiens</div>
+      <div class="feature-desc">Vous gérez un cabinet à plusieurs ? Le plan Cabinet permet jusqu'à 5 praticiens avec des agendas indépendants.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-title">Sécurité & RGPD</div>
+      <div class="feature-desc">Données chiffrées, hébergées en France. Conformité RGPD incluse. Aucune donnée patient revendue.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<div class="how-section">
+  <div class="how-inner">
+    <span class="section-eyebrow" style="color:var(--teal-mid)">Mise en route</span>
+    <h2 class="section-title">Opérationnel en 15 minutes.</h2>
+    <p class="section-sub">Pas de formation, pas de migration complexe. Vous créez votre compte, configurez vos créneaux et partagez votre lien.</p>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="step-number">1</div>
+        <div class="step-title">Créez votre compte</div>
+        <div class="step-desc">Renseignez votre spécialité, vos horaires habituels. CabinBook génère automatiquement vos créneaux.</div>
+        <div class="step-connector">→</div>
+      </div>
+      <div class="how-step">
+        <div class="step-number">2</div>
+        <div class="step-title">Partagez votre lien</div>
+        <div class="step-desc">Envoyez votre page de réservation par SMS, email ou mettez-la sur votre site. Vos patients réservent seuls.</div>
+        <div class="step-connector">→</div>
+      </div>
+      <div class="how-step">
+        <div class="step-number">3</div>
+        <div class="step-title">Les rappels partent seuls</div>
+        <div class="step-desc">CabinBook envoie les rappels J-1 automatiquement. Vous n'avez plus rien à faire. Profitez de vos créneaux remplis.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials" style="background:var(--cream); max-width:none; padding: 5rem 2rem;">
+  <div style="max-width:1100px; margin:0 auto;">
+    <span class="section-eyebrow">Témoignages</span>
+    <h2 class="section-title">Ce que disent nos praticiens</h2>
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <div class="stars">★★★★★</div>
+        <p class="testimonial-text">"Avant CabinBook, j'avais 4 à 5 no-shows par semaine. Maintenant c'est 1 par mois maximum. Le calcul est vite fait."</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">SL</div>
+          <div><div class="author-name">Sophie L.</div><div class="author-title">Kinésithérapeute — Lyon</div></div>
+        </div>
+      </div>
+      <div class="testimonial-card">
+        <div class="stars">★★★★★</div>
+        <p class="testimonial-text">"Mes patients adorent pouvoir réserver en ligne à n'importe quelle heure. Et moi j'adore ne plus répondre au téléphone entre deux séances."</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">MR</div>
+          <div><div class="author-name">Marc R.</div><div class="author-title">Ostéopathe — Paris 11e</div></div>
+        </div>
+      </div>
+      <div class="testimonial-card">
+        <div class="stars">★★★★★</div>
+        <p class="testimonial-text">"J'ai testé 3 logiciels avant CabinBook. C'est le seul qui ne m'a pas pris une demi-journée à configurer. En 20 minutes c'était en ligne."</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">CB</div>
+          <div><div class="author-name">Claire B.</div><div class="author-title">Psychologue — Bordeaux</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <span class="section-eyebrow">Tarifs</span>
+  <h2 class="section-title">Un prix clair, sans surprise.</h2>
+  <p class="section-sub">30 jours d'essai gratuit, sans carte bancaire. Résiliez quand vous voulez.</p>
+
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">29€ <span>/ mois</span></div>
+      <div class="plan-desc">Pour démarrer seul, simplement.</div>
+      <ul class="plan-features">
+        <li>1 praticien</li>
+        <li>Rappels email automatiques</li>
+        <li>Page de réservation publique</li>
+        <li>Tableau de bord</li>
+        <li>Support par email</li>
+      </ul>
+      <a href="#" class="btn-plan btn-plan-outline">Démarrer gratuitement</a>
+    </div>
+    <div class="pricing-card featured">
+      <div class="popular-badge">Le plus choisi</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">49€ <span>/ mois</span></div>
+      <div class="plan-desc">Email + SMS. Zéro no-show, vraiment.</div>
+      <ul class="plan-features">
+        <li>1 praticien</li>
+        <li>Rappels email <strong>et SMS</strong></li>
+        <li>Page de réservation publique</li>
+        <li>Tableau de bord avancé</li>
+        <li>Export agenda (iCal)</li>
+        <li>Support prioritaire</li>
+      </ul>
+      <a href="#" class="btn-plan btn-plan-primary">Démarrer gratuitement</a>
+    </div>
+    <div class="pricing-card">
+      <div class="plan-name">Cabinet</div>
+      <div class="plan-price">99€ <span>/ mois</span></div>
+      <div class="plan-desc">Pour les cabinets partagés.</div>
+      <ul class="plan-features">
+        <li>Jusqu'à 5 praticiens</li>
+        <li>Rappels email et SMS</li>
+        <li>Agendas indépendants</li>
+        <li>Tableau de bord multi-praticiens</li>
+        <li>Export & statistiques avancées</li>
+        <li>Support téléphonique</li>
+      </ul>
+      <a href="#" class="btn-plan btn-plan-outline">Démarrer gratuitement</a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<div class="cta-section">
+  <h2>Prêt à récupérer vos créneaux perdus ?</h2>
+  <p>Rejoignez 200+ praticiens qui n'ont plus de no-shows non gérés.</p>
+  <a href="#" class="btn-cta-white">Démarrer — 30 jours gratuits</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Cabin<span>Book</span></div>
+  <div class="footer-links">
+    <a href="#">Mentions légales</a>
+    <a href="#">Politique de confidentialité</a>
+    <a href="#">RGPD</a>
+    <a href="#">Contact</a>
+  </div>
+  <div style="font-size:0.75rem; color:rgba(255,255,255,0.25);">© 2026 CabinBook</div>
+</footer>
+
+</body>
+</html>
