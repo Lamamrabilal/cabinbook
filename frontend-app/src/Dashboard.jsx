@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 
 // ── Config API ───────────────────────────────────────────
 // ⚠️ Adaptez si votre backend tourne ailleurs qu'en local sur le port 8000
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 // ── Design tokens (cohérents avec la page de résa) ──────
 const T = {
