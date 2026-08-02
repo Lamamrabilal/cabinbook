@@ -41,9 +41,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-]
+CORS_ALLOWED_ORIGINS = os.getenv(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:5173"
+).split(",")
 
 ROOT_URLCONF = "cabinbook.urls"
 AUTH_USER_MODEL = "accounts.User"
@@ -147,3 +147,15 @@ TIME_ZONE = "Europe/Paris"
 USE_I18N = True
 USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ── Sécurité production (actifs uniquement si DEBUG=False) ──
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 an
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
