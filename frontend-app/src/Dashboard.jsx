@@ -2008,6 +2008,20 @@ function ReviewsSection({ apiFetch, practitionerId }) {
   );
 }
 
+// Regroupe les cartes de la page Paramètres sous un même thème, avec un
+// intitulé de section — évite d'avoir une simple liste plate de cartes
+// sans hiérarchie visuelle.
+function SettingsSection({ title, children }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: T.slate, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function SettingsView({ apiFetch, plan, isSubscriptionActive, practitionerFilter, role, ownerName, otpEnabled, onMeUpdated, calendarReturn, onCalendarReturnHandled }) {
   const isOwner = role !== "secretary";
   const [practitioners, setPractitioners] = useState([]);
@@ -2096,199 +2110,221 @@ function SettingsView({ apiFetch, plan, isSubscriptionActive, practitionerFilter
         </div>
       )}
 
-      {plan === "cabinet" && practitioners.length > 1 && (
-        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 4 }}>
-                Comparatif par praticien
+      <SettingsSection title="Cabinet & praticiens">
+        {plan === "cabinet" && practitioners.length > 1 && (
+          <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 4 }}>
+                  Comparatif par praticien
+                </div>
+                <p style={{ fontSize: 12, color: T.slate }}>
+                  Comparez l'activité de vos praticiens ce mois-ci.
+                </p>
               </div>
-              <p style={{ fontSize: 12, color: T.slate }}>
-                Comparez l'activité de vos praticiens ce mois-ci.
-              </p>
-            </div>
-            <button onClick={loadComparative} style={{
-              background: T.navy, color: T.white, border: "none", borderRadius: 8,
-              padding: "0.5rem 1rem", fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-            }}>
-              Voir le comparatif
-            </button>
-          </div>
-
-          {showComparative && (
-            <div style={{ marginTop: 16, borderTop: `1px solid ${T.border}`, paddingTop: 16 }}>
-              {loadingComparative ? (
-                <LoadingState label="Chargement…" />
-              ) : (
-                <>
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
-                    fontSize: 11, fontWeight: 700, color: T.slate, textTransform: "uppercase",
-                    letterSpacing: "0.05em", paddingBottom: 8, borderBottom: `1px solid ${T.border}`,
-                  }}>
-                    <span>Praticien</span><span>RDV</span><span>Confirmés</span><span>No-shows</span><span>Remplissage</span>
-                  </div>
-                  {comparativeData.map(p => (
-                    <div key={p.practitioner_id} style={{
-                      display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
-                      padding: "0.6rem 0", borderBottom: `1px solid ${T.border}`, fontSize: 13, alignItems: "center",
-                    }}>
-                      <span style={{ fontWeight: 600, color: T.navy }}>{p.practitioner_name}</span>
-                      <span>{p.total_month}</span>
-                      <span style={{ color: T.teal, fontWeight: 600 }}>{p.confirmed}</span>
-                      <span style={{ color: p.no_shows > 0 ? T.red : T.slate }}>{p.no_shows}</span>
-                      <span style={{ fontWeight: 600, color: T.navy }}>{p.fill_rate}%</span>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {practitioners.length === 0 && !showAddForm && (
-        <div style={{ color: T.slate, padding: 8 }}>Aucun profil praticien trouvé.</div>
-      )}
-
-      {practitioners.length > 0 && (
-        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: practitioners.length > 1 ? 12 : 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.navy }}>
-              {practitioners.length > 1 ? "Praticiens du cabinet" : "Praticien"}
-            </div>
-            {isOwner && canAddMore && !showAddForm && (
-              <button onClick={() => setShowAddForm(true)} style={{
-                background: "transparent", border: `1px solid ${T.teal}`, color: T.teal,
-                borderRadius: 8, padding: "0.35rem 0.75rem", fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+              <button onClick={loadComparative} style={{
+                background: T.navy, color: T.white, border: "none", borderRadius: 8,
+                padding: "0.5rem 1rem", fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
               }}>
-                + Ajouter un praticien
+                Voir le comparatif
               </button>
+            </div>
+
+            {showComparative && (
+              <div style={{ marginTop: 16, borderTop: `1px solid ${T.border}`, paddingTop: 16 }}>
+                {loadingComparative ? (
+                  <LoadingState label="Chargement…" />
+                ) : (
+                  <>
+                    <div style={{
+                      display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                      fontSize: 11, fontWeight: 700, color: T.slate, textTransform: "uppercase",
+                      letterSpacing: "0.05em", paddingBottom: 8, borderBottom: `1px solid ${T.border}`,
+                    }}>
+                      <span>Praticien</span><span>RDV</span><span>Confirmés</span><span>No-shows</span><span>Remplissage</span>
+                    </div>
+                    {comparativeData.map(p => (
+                      <div key={p.practitioner_id} style={{
+                        display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                        padding: "0.6rem 0", borderBottom: `1px solid ${T.border}`, fontSize: 13, alignItems: "center",
+                      }}>
+                        <span style={{ fontWeight: 600, color: T.navy }}>{p.practitioner_name}</span>
+                        <span>{p.total_month}</span>
+                        <span style={{ color: T.teal, fontWeight: 600 }}>{p.confirmed}</span>
+                        <span style={{ color: p.no_shows > 0 ? T.red : T.slate }}>{p.no_shows}</span>
+                        <span style={{ fontWeight: 600, color: T.navy }}>{p.fill_rate}%</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
             )}
           </div>
+        )}
+        {practitioners.length === 0 && !showAddForm && (
+          <div style={{ color: T.slate, padding: 8 }}>Aucun profil praticien trouvé.</div>
+        )}
 
-          {practitioners.length > 1 && (
-            <p style={{ fontSize: 11.5, color: T.slate, marginBottom: 4 }}>
-              Praticien affiché : <strong style={{ color: T.navy }}>{practitioner ? `${practitioner.first_name} ${practitioner.last_name}` : "—"}</strong>
-              {" "}(changez via le sélecteur dans le menu de gauche)
-            </p>
-          )}
+        {practitioners.length > 0 && (
+          <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: practitioners.length > 1 ? 12 : 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.navy }}>
+                {practitioners.length > 1 ? "Praticiens du cabinet" : "Praticien"}
+              </div>
+              {isOwner && canAddMore && !showAddForm && (
+                <button onClick={() => setShowAddForm(true)} style={{
+                  background: "transparent", border: `1px solid ${T.teal}`, color: T.teal,
+                  borderRadius: 8, padding: "0.35rem 0.75rem", fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                }}>
+                  + Ajouter un praticien
+                </button>
+              )}
+            </div>
 
-          {!canAddMore && !showAddForm && practitioners.length > 1 && (
-            <p style={{ fontSize: 11.5, color: T.slate, marginTop: 6 }}>
-              Limite de {maxPractitioners} praticien(s) atteinte pour le plan {plan}.
-            </p>
-          )}
+            {practitioners.length > 1 && (
+              <p style={{ fontSize: 11.5, color: T.slate, marginBottom: 4 }}>
+                Praticien affiché : <strong style={{ color: T.navy }}>{practitioner ? `${practitioner.first_name} ${practitioner.last_name}` : "—"}</strong>
+                {" "}(changez via le sélecteur dans le menu de gauche)
+              </p>
+            )}
 
-          {showAddForm && (
-            <AddPractitionerForm
-              apiFetch={apiFetch}
-              onCancel={() => setShowAddForm(false)}
-              onAdded={(created) => {
-                setShowAddForm(false);
-                loadPractitioners().then(() => setSelectedId(created.id));
-              }}
-            />
-          )}
-        </div>
-      )}
+            {!canAddMore && !showAddForm && practitioners.length > 1 && (
+              <p style={{ fontSize: 11.5, color: T.slate, marginTop: 6 }}>
+                Limite de {maxPractitioners} praticien(s) atteinte pour le plan {plan}.
+              </p>
+            )}
+
+            {showAddForm && (
+              <AddPractitionerForm
+                apiFetch={apiFetch}
+                onCancel={() => setShowAddForm(false)}
+                onAdded={() => {
+                  setShowAddForm(false);
+                  loadPractitioners();
+                }}
+              />
+            )}
+          </div>
+        )}
+      </SettingsSection>
 
       {practitioner && (
         <>
-          <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 4 }}>
-              Page de réservation — {practitioner.first_name} {practitioner.last_name}
-            </div>
-            <p style={{ fontSize: 12.5, color: T.slate, marginBottom: 12, lineHeight: 1.5 }}>
-              Partagez ce lien à vos patients pour qu'ils puissent réserver un créneau directement.
-            </p>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <input readOnly value={bookingUrl} style={{ ...inputStyle, flex: 1, background: T.cream }} />
-              <button onClick={copyLink} style={{
-                background: copied ? T.teal : T.navy, color: T.white, border: "none",
-                borderRadius: 8, padding: "0 1rem", fontSize: 13, fontWeight: 700, cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}>
-                {copied ? "Copié ✓" : "Copier"}
-              </button>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 16, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(bookingUrl)}`}
-                alt="QR code de la page de réservation"
-                width={140} height={140}
-                style={{ border: `1px solid ${T.border}`, borderRadius: 10, background: T.white, padding: 8 }}
-              />
-              <div style={{ fontSize: 12.5, color: T.slate, lineHeight: 1.6 }}>
-                Affichez ce QR code en salle d'attente ou imprimez-le sur vos supports.
-                Vos patients pourront le scanner pour réserver directement.
+          <SettingsSection title="Profil">
+            <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: T.slate }}>
+                <div><strong style={{ color: T.navy }}>Nom :</strong> {practitioner.first_name} {practitioner.last_name}</div>
+                <div><strong style={{ color: T.navy }}>Spécialité :</strong> {practitioner.specialty}</div>
+                {practitioner.phone && <div><strong style={{ color: T.navy }}>Téléphone :</strong> {practitioner.phone}</div>}
               </div>
             </div>
-          </div>
+          </SettingsSection>
 
-          <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 10 }}>Profil</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: T.slate }}>
-              <div><strong style={{ color: T.navy }}>Nom :</strong> {practitioner.first_name} {practitioner.last_name}</div>
-              <div><strong style={{ color: T.navy }}>Spécialité :</strong> {practitioner.specialty}</div>
-              {practitioner.phone && <div><strong style={{ color: T.navy }}>Téléphone :</strong> {practitioner.phone}</div>}
-            </div>
-            <ConsultationPriceField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />
-            {isOwner && <DepositAmountField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />}
-            {isOwner && <TeleconsultationToggleField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />}
-            {isOwner && <GoogleCalendarSyncField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />}
-            <DirectoryVisibilityField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />
-          </div>
-
-          <ReviewsSection apiFetch={apiFetch} practitionerId={practitioner.id} />
-
-          {(plan === "pro" || plan === "cabinet") && (
+          <SettingsSection title="Réservation en ligne">
             <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 4 }}>Export agenda</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 4 }}>
+                Page de réservation — {practitioner.first_name} {practitioner.last_name}
+              </div>
               <p style={{ fontSize: 12.5, color: T.slate, marginBottom: 12, lineHeight: 1.5 }}>
-                Téléchargez vos rendez-vous au format iCal pour les importer dans Google Calendar,
-                Apple Calendar ou Outlook.
+                Partagez ce lien à vos patients pour qu'ils puissent réserver un créneau directement.
               </p>
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await apiFetch("/api/appointments/export_ical/", { raw: true });
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "cabinbook-agenda.ics";
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                  } catch (err) {
-                    alert(err.message || "Impossible de télécharger l'export pour le moment.");
-                  }
-                }}
-                style={{
-                  background: T.navy, color: T.white, border: "none",
-                  borderRadius: 8, padding: "0.55rem 1rem", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
-                }}
-              >
-                📅 Télécharger mon agenda (.ics)
-              </button>
-            </div>
-          )}
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <input readOnly value={bookingUrl} style={{ ...inputStyle, flex: 1, background: T.cream }} />
+                <button onClick={copyLink} style={{
+                  background: copied ? T.teal : T.navy, color: T.white, border: "none",
+                  borderRadius: 8, padding: "0 1rem", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}>
+                  {copied ? "Copié ✓" : "Copier"}
+                </button>
+              </div>
 
-          <AvailabilityRulesManager apiFetch={apiFetch} practitionerId={practitioner.id} />
+              <div style={{ display: "flex", alignItems: "center", gap: 16, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(bookingUrl)}`}
+                  alt="QR code de la page de réservation"
+                  width={140} height={140}
+                  style={{ border: `1px solid ${T.border}`, borderRadius: 10, background: T.white, padding: 8 }}
+                />
+                <div style={{ fontSize: 12.5, color: T.slate, lineHeight: 1.6 }}>
+                  Affichez ce QR code en salle d'attente ou imprimez-le sur vos supports.
+                  Vos patients pourront le scanner pour réserver directement.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 10 }}>Options de réservation</div>
+              <ConsultationPriceField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />
+              {isOwner && <DepositAmountField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />}
+              {isOwner && <TeleconsultationToggleField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />}
+              <DirectoryVisibilityField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />
+            </div>
+
+            <ReviewsSection apiFetch={apiFetch} practitionerId={practitioner.id} />
+          </SettingsSection>
+
+          <SettingsSection title="Agenda & disponibilités">
+            <AvailabilityRulesManager apiFetch={apiFetch} practitionerId={practitioner.id} />
+
+            {isOwner && (
+              <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 10 }}>Synchronisation calendrier</div>
+                <GoogleCalendarSyncField apiFetch={apiFetch} practitioner={practitioner} onUpdated={loadPractitioners} />
+              </div>
+            )}
+
+            {(plan === "pro" || plan === "cabinet") && (
+              <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.5rem" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.navy, marginBottom: 4 }}>Export agenda</div>
+                <p style={{ fontSize: 12.5, color: T.slate, marginBottom: 12, lineHeight: 1.5 }}>
+                  Téléchargez vos rendez-vous au format iCal pour les importer dans Google Calendar,
+                  Apple Calendar ou Outlook.
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await apiFetch("/api/appointments/export_ical/", { raw: true });
+                      const blob = await res.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "cabinbook-agenda.ics";
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                    } catch (err) {
+                      alert(err.message || "Impossible de télécharger l'export pour le moment.");
+                    }
+                  }}
+                  style={{
+                    background: T.navy, color: T.white, border: "none",
+                    borderRadius: 8, padding: "0.55rem 1rem", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  📅 Télécharger mon agenda (.ics)
+                </button>
+              </div>
+            )}
+          </SettingsSection>
         </>
       )}
 
       {isOwner && (plan === "pro" || plan === "cabinet") && (
-        <TeamSection apiFetch={apiFetch} plan={plan} />
+        <SettingsSection title="Équipe & salles">
+          {(plan === "pro" || plan === "cabinet") && <TeamSection apiFetch={apiFetch} plan={plan} />}
+          {plan === "cabinet" && <RoomsSection apiFetch={apiFetch} />}
+        </SettingsSection>
       )}
 
-      {isOwner && plan === "cabinet" && (
-        <RoomsSection apiFetch={apiFetch} />
+      <SettingsSection title="Sécurité">
+        <TwoFactorSection apiFetch={apiFetch} otpEnabled={otpEnabled} onMeUpdated={onMeUpdated} />
+      </SettingsSection>
+
+      {isOwner && (
+        <SettingsSection title="Abonnement">
+          <BillingSection apiFetch={apiFetch} currentPlan={plan} isActive={isSubscriptionActive} />
+        </SettingsSection>
       )}
-
-      <TwoFactorSection apiFetch={apiFetch} otpEnabled={otpEnabled} onMeUpdated={onMeUpdated} />
-
-      {isOwner && <BillingSection apiFetch={apiFetch} currentPlan={plan} isActive={isSubscriptionActive} />}
     </div>
   );
 }
