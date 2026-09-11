@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laisser un avis — CabinBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0F1B2D; --teal: #1A7F72; --teal-lt: #E8F5F3;
+      --slate: #4A5568; --border: #D1DCE8; --white: #FFFFFF;
+      --cream: #F8FAFB; --error: #C0392B; --amber: #B7791F;
+    }
+    html { font-size: 16px; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--navy); min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: var(--navy); padding: 1.25rem 2rem; display: flex; align-items: center; gap: 0.75rem; }
+    .logo { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--white); letter-spacing: -0.02em; text-decoration: none; }
+    .logo span { color: #5DD6C8; }
+    main { flex: 1; max-width: 560px; margin: 0 auto; width: 100%; padding: 2.5rem 1.25rem 4rem; }
+    .card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; }
+    h1 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; font-weight: 400; margin-bottom: 0.5rem; }
+    .sub { color: var(--slate); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .stars-input { display: flex; gap: 0.4rem; font-size: 2.2rem; margin-bottom: 1.5rem; cursor: pointer; }
+    .stars-input span { color: var(--border); transition: color 0.1s; }
+    .stars-input span.active { color: var(--amber); }
+    textarea { width: 100%; padding: 0.8rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--navy); background: var(--cream); resize: vertical; min-height: 100px; outline: none; margin-bottom: 1.5rem; }
+    textarea:focus { border-color: var(--teal); background: var(--white); }
+    .btn { width: 100%; padding: 1rem; background: var(--teal); color: var(--white); border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #155f55; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error-msg { background: #FDECEA; border: 1px solid #F5C6C2; color: var(--error); border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.875rem; margin-bottom: 1rem; }
+    .success-card { text-align: center; padding: 1rem 0; }
+    .success-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .loading { text-align: center; padding: 3rem; color: var(--slate); }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">Cabin<span>Book</span></a>
+</header>
+
+<main>
+  <div class="card" id="app">
+    <div class="loading"><div class="spinner"></div><p>Chargement…</p></div>
+  </div>
+</main>
+
+<script>
+const API_BASE = window.location.origin;
+const token = window.location.pathname.split('/').filter(Boolean)[1];
+let rating = 0;
+
+function renderForm(practitioner) {
+  document.getElementById('app').innerHTML = `
+    <h1>Votre avis sur Dr ${practitioner.first_name} ${practitioner.last_name}</h1>
+    <p class="sub">Votre retour aide les futurs patients et le praticien à s'améliorer.</p>
+    <div id="errorBox"></div>
+    <div class="stars-input" id="stars">
+      ${[1,2,3,4,5].map(n => `<span data-value="${n}">★</span>`).join('')}
+    </div>
+    <textarea id="comment" placeholder="Votre commentaire (facultatif)…"></textarea>
+    <button class="btn" id="submitBtn" disabled>Envoyer mon avis</button>`;
+
+  const stars = document.querySelectorAll('#stars span');
+  stars.forEach(star => {
+    star.addEventListener('click', () => {
+      rating = parseInt(star.dataset.value);
+      stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.value) <= rating));
+      document.getElementById('submitBtn').disabled = false;
+    });
+  });
+
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Envoi…';
+    try {
+      const res = await fetch(`${API_BASE}/api/public/book/review/${token}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, comment: document.getElementById('comment').value.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Une erreur est survenue.");
+      document.getElementById('app').innerHTML = `
+        <div class="success-card">
+          <div class="success-icon">✅</div>
+          <h1>Merci pour votre avis !</h1>
+          <p class="sub">Il a bien été enregistré.</p>
+        </div>`;
+    } catch (err) {
+      document.getElementById('errorBox').innerHTML = `<div class="error-msg">${err.message}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Envoyer mon avis';
+    }
+  });
+}
+
+(async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/public/book/review/${token}/`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Ce lien d'avis n'est plus valide.");
+    if (data.already_reviewed) {
+      document.getElementById('app').innerHTML = `
+        <div class="success-card">
+          <div class="success-icon">🙏</div>
+          <h1>Vous avez déjà laissé un avis</h1>
+          <p class="sub">Merci pour votre retour sur Dr ${data.practitioner.first_name} ${data.practitioner.last_name}.</p>
+        </div>`;
+      return;
+    }
+    renderForm(data.practitioner);
+  } catch (err) {
+    document.getElementById('app').innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

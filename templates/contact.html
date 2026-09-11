@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact — CabinBook</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      color: #0F1B2D;
+      background: #F8FAFB;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .card {
+      background: #FFFFFF;
+      border: 1px solid #D1DCE8;
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 460px;
+    }
+    .back-link { display: inline-block; margin-bottom: 1.5rem; font-size: 0.85rem; text-decoration: none; color: #1A7F72; }
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem;
+      margin: 0 0 0.5rem;
+    }
+    p.sub { color: #4A5568; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #4A5568;
+      margin-bottom: 0.35rem;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid #D1DCE8;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      background: #F8FAFB;
+    }
+    textarea { resize: vertical; min-height: 100px; }
+    button {
+      width: 100%;
+      background: #1A7F72;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      padding: 0.8rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .success {
+      background: #E8F5F3;
+      color: #1A7F72;
+      padding: 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .error {
+      background: #FDECEA;
+      color: #C0392B;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <a href="/" class="back-link">← Retour à l'accueil</a>
+    <h1>Nous contacter</h1>
+    <p class="sub">Une question, une suggestion ? Écrivez-nous, nous répondons rapidement.</p>
+
+    <div id="success-message" class="success" style="display:none;"></div>
+    <div id="error-message" class="error" style="display:none;"></div>
+
+    <form id="contact-form">
+      <label for="name">Nom</label>
+      <input type="text" id="name" name="name" required />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
+
+      <label for="message">Message</label>
+      <textarea id="message" name="message" required></textarea>
+
+      <button type="submit" id="submit-btn">Envoyer le message</button>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('contact-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const successMsg = document.getElementById('success-message');
+    const errorMsg = document.getElementById('error-message');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours…';
+
+      const payload = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        message: document.getElementById('message').value,
+      };
+
+      try {
+        const res = await fetch('/api/accounts/contact/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Une erreur est survenue.");
+
+        form.style.display = 'none';
+        successMsg.textContent = data.message;
+        successMsg.style.display = 'block';
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Envoyer le message';
+      }
+    });
+  </script>
+</body>
+</html>

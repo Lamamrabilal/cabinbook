@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trouver un praticien — CabinBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0F1B2D; --teal: #1A7F72; --teal-lt: #E8F5F3;
+      --slate: #4A5568; --border: #D1DCE8; --white: #FFFFFF;
+      --cream: #F8FAFB; --error: #C0392B; --success: #1A7F72; --amber: #B7791F;
+    }
+    html { font-size: 16px; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--navy); min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: var(--navy); padding: 1.25rem 2rem; display: flex; align-items: center; gap: 0.75rem; }
+    .logo { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--white); letter-spacing: -0.02em; text-decoration: none; }
+    .logo span { color: #5DD6C8; }
+    main { flex: 1; max-width: 900px; margin: 0 auto; width: 100%; padding: 2.5rem 1.25rem 4rem; }
+    h1 { font-family: 'DM Serif Display', serif; font-size: 1.9rem; font-weight: 400; margin-bottom: 0.5rem; }
+    .sub { color: var(--slate); margin-bottom: 2rem; }
+    .search-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .search-card input, .search-card select { padding: 0.7rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--navy); background: var(--cream); outline: none; flex: 1; min-width: 160px; }
+    .search-card input:focus, .search-card select:focus { border-color: var(--teal); background: var(--white); }
+    .search-card button { padding: 0.7rem 1.4rem; background: var(--teal); color: var(--white); border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .search-card button:hover { background: #155f55; }
+    .results-count { color: var(--slate); font-size: 0.875rem; margin-bottom: 1rem; }
+    .card-list { display: flex; flex-direction: column; gap: 1rem; }
+    .p-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; text-decoration: none; color: inherit; transition: box-shadow 0.15s, border-color 0.15s; }
+    .p-card:hover { border-color: var(--teal); box-shadow: 0 2px 10px rgba(15,27,45,0.06); }
+    .avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--teal-lt); display: flex; align-items: center; justify-content: center; font-family: 'DM Serif Display', serif; font-size: 1.3rem; color: var(--teal); flex-shrink: 0; }
+    .p-card h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.2rem; }
+    .p-card .specialty { font-size: 0.8rem; color: var(--teal); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .p-card .city { font-size: 0.85rem; color: var(--slate); margin-top: 0.3rem; }
+    .rating { margin-left: auto; text-align: right; white-space: nowrap; }
+    .rating .stars { color: var(--amber); font-size: 0.95rem; }
+    .rating .count { font-size: 0.75rem; color: var(--slate); }
+    .no-rating { font-size: 0.8rem; color: var(--slate); font-style: italic; }
+    .empty { text-align: center; padding: 3rem 1rem; color: var(--slate); }
+    .loading { text-align: center; padding: 3rem; color: var(--slate); }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 600px) {
+      .search-card { flex-direction: column; }
+      .search-card input, .search-card select, .search-card button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">Cabin<span>Book</span></a>
+</header>
+
+<main>
+  <h1>Trouver un praticien</h1>
+  <p class="sub">Kinésithérapeutes, ostéopathes, psychologues et infirmiers libéraux disponibles à la réservation en ligne.</p>
+
+  <div class="search-card">
+    <input id="q" type="text" placeholder="Nom du praticien…" />
+    <input id="city" type="text" placeholder="Ville…" />
+    <select id="specialty">
+      <option value="">Toutes spécialités</option>
+      <option value="kine">Kinésithérapeute</option>
+      <option value="osteo">Ostéopathe</option>
+      <option value="psy">Psychologue</option>
+      <option value="infirmier">Infirmier libéral</option>
+      <option value="autre">Autre</option>
+    </select>
+    <button id="searchBtn">Rechercher</button>
+  </div>
+
+  <div id="results">
+    <div class="loading"><div class="spinner"></div><p>Chargement…</p></div>
+  </div>
+</main>
+
+<script>
+const API_BASE = window.location.origin;
+
+function starString(avg) {
+  const rounded = Math.round(avg);
+  return '★'.repeat(rounded) + '☆'.repeat(5 - rounded);
+}
+
+function renderResults(list) {
+  const el = document.getElementById('results');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty">Aucun praticien trouvé pour cette recherche.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="results-count">${list.length} praticien${list.length > 1 ? 's' : ''} trouvé${list.length > 1 ? 's' : ''}</div>
+    <div class="card-list">
+      ${list.map(p => {
+        const initials = (p.first_name[0] + p.last_name[0]).toUpperCase();
+        const ratingHtml = p.average_rating
+          ? `<div class="rating"><div class="stars">${starString(p.average_rating)}</div><div class="count">${p.average_rating}/5 · ${p.review_count} avis</div></div>`
+          : `<div class="rating"><span class="no-rating">Pas encore d'avis</span></div>`;
+        return `
+          <a class="p-card" href="/book/${p.booking_page_slug}/">
+            <div class="avatar">${initials}</div>
+            <div>
+              <h2>Dr ${p.first_name} ${p.last_name}</h2>
+              <div class="specialty">${p.specialty_display}</div>
+              ${p.city ? `<div class="city">📍 ${p.city}</div>` : ''}
+            </div>
+            ${ratingHtml}
+          </a>`;
+      }).join('')}
+    </div>`;
+}
+
+async function search() {
+  const el = document.getElementById('results');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><p>Recherche…</p></div>';
+  const params = new URLSearchParams();
+  const q = document.getElementById('q').value.trim();
+  const city = document.getElementById('city').value.trim();
+  const specialty = document.getElementById('specialty').value;
+  if (q) params.set('q', q);
+  if (city) params.set('city', city);
+  if (specialty) params.set('specialty', specialty);
+  try {
+    const res = await fetch(`${API_BASE}/api/public/directory/?${params.toString()}`);
+    const data = await res.json();
+    renderResults(data);
+  } catch (err) {
+    el.innerHTML = '<div class="empty">Une erreur est survenue. Réessayez.</div>';
+  }
+}
+
+document.getElementById('searchBtn').addEventListener('click', search);
+['q', 'city'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+});
+document.getElementById('specialty').addEventListener('change', search);
+
+search();
+</script>
+</body>
+</html>

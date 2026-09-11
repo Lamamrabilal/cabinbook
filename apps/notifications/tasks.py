@@ -56,6 +56,35 @@ def send_appointment_reminder_sms(self, appointment_id: int):
         raise self.retry(exc=exc, countdown=300)
 
 
+@shared_task(bind=True, max_retries=3)
+def send_appointment_reminder_whatsapp(self, appointment_id: int):
+    """Envoie un rappel WhatsApp J-1 avant le RDV (plan Pro/Cabinet, en plus de l'email/SMS)."""
+    from django.conf import settings
+    from apps.appointments.models import Appointment
+    from apps.notifications.services import WhatsAppService
+
+    if not settings.TWILIO_WHATSAPP_FROM_NUMBER:
+        return  # Sender WhatsApp Business non configuré côté Twilio — canal inactif.
+
+    try:
+        appt = Appointment.objects.select_related("patient", "practitioner__owner").get(pk=appointment_id)
+
+        if appt.practitioner.owner.plan == "starter":
+            return
+
+        if appt.status != Appointment.STATUS_CONFIRMED or not appt.patient.phone:
+            return
+
+        WhatsAppService.send_reminder(appt)
+        appt.reminder_whatsapp_sent = True
+        appt.save(update_fields=["reminder_whatsapp_sent"])
+        logger.info("Rappel WhatsApp envoyé pour RDV %s", appointment_id)
+
+    except Exception as exc:
+        logger.error("Erreur rappel WhatsApp RDV %s : %s", appointment_id, exc)
+        raise self.retry(exc=exc, countdown=300)
+
+
 @shared_task
 def schedule_reminders_for_tomorrow():
     """
@@ -76,5 +105,158 @@ def schedule_reminders_for_tomorrow():
     for appt in appointments:
         send_appointment_reminder_email.delay(appt.pk)
         send_appointment_reminder_sms.delay(appt.pk)
+        send_appointment_reminder_whatsapp.delay(appt.pk)
 
     logger.info("%d rappels programmés pour demain.", appointments.count())
+
+def generate_slots_for_rule(rule, horizon_days=14):
+    """
+    Génère les créneaux (TimeSlot) d'une règle de disponibilité récurrente
+    pour les `horizon_days` prochains jours. Idempotent (ne recrée pas les
+    créneaux déjà existants) et ignore les créneaux déjà passés (pertinent
+    pour le jour même : une règle activée à 15h ne doit pas créer de
+    créneau à 9h). Utilisée à la fois par la tâche Celery quotidienne et
+    immédiatement à la création/activation d'une règle, pour que les
+    créneaux du jour et du lendemain soient réservables sans attendre le
+    prochain passage de la tâche planifiée.
+    """
+    from datetime import timedelta, datetime
+    from apps.appointments.models import TimeSlot
+
+    today = timezone.now().date()
+    created_count = 0
+
+    for offset in range(horizon_days):
+        day = today + timedelta(days=offset)
+        if day.weekday() != rule.weekday:
+            continue
+
+        current_dt = timezone.make_aware(datetime.combine(day, rule.start_time))
+        end_dt = timezone.make_aware(datetime.combine(day, rule.end_time))
+        duration = timedelta(minutes=rule.slot_duration_minutes)
+
+        while current_dt + duration <= end_dt:
+            slot_end = current_dt + duration
+            if current_dt < timezone.now():
+                # Le créneau du jour même est déjà passé (règle appliquée
+                # à "aujourd'hui" mais tâche exécutée en cours de journée) :
+                # ne pas le créer.
+                current_dt = slot_end
+                continue
+            _, created = TimeSlot.objects.get_or_create(
+                practitioner=rule.practitioner,
+                start_time=current_dt,
+                defaults={"end_time": slot_end, "is_available": True},
+            )
+            if created:
+                created_count += 1
+            current_dt = slot_end
+
+    return created_count
+
+
+@shared_task
+def generate_slots_from_availability():
+    """
+    Tâche Celery Beat — génère les créneaux (TimeSlot) des 14 prochains jours
+    à partir des règles de disponibilité récurrentes (AvailabilityRule) de
+    chaque praticien. Idempotent : ne recrée pas les créneaux déjà existants.
+    """
+    from apps.appointments.models import AvailabilityRule
+
+    created_count = 0
+    rules = AvailabilityRule.objects.filter(is_active=True).select_related("practitioner")
+    for rule in rules:
+        created_count += generate_slots_for_rule(rule)
+
+    logger.info("%d nouveaux creneaux generes depuis les regles de disponibilite.", created_count)
+    return created_count
+
+
+@shared_task(bind=True, max_retries=3)
+def sync_appointment_to_google(self, appointment_id):
+    """
+    Pousse l'état d'un RDV vers le Google Calendar connecté de son praticien
+    (créé/mis à jour s'il est confirmé, supprimé s'il est annulé). Ne fait
+    rien si le praticien n'a pas connecté de calendrier. Déclenché par le
+    signal post_save sur Appointment (apps/appointments/signals.py).
+    """
+    from apps.appointments.models import Appointment
+    from apps.accounts.models import GoogleCalendarConnection
+    from apps.accounts import google_calendar
+
+    try:
+        appt = Appointment.objects.select_related("practitioner", "patient").get(pk=appointment_id)
+    except Appointment.DoesNotExist:
+        return
+
+    try:
+        connection = GoogleCalendarConnection.objects.get(practitioner_id=appt.practitioner_id)
+    except GoogleCalendarConnection.DoesNotExist:
+        return
+
+    try:
+        if appt.status == Appointment.STATUS_CANCELLED:
+            google_calendar.delete_event(connection, appt)
+            Appointment.objects.filter(pk=appt.pk).update(google_event_id="")
+        elif appt.status == Appointment.STATUS_CONFIRMED:
+            event_id = google_calendar.upsert_event(connection, appt)
+            Appointment.objects.filter(pk=appt.pk).update(google_event_id=event_id)
+        # PENDING / DONE / NO_SHOW : pas de synchro (DONE/NO_SHOW gardent
+        # l'événement existant tel quel comme trace historique).
+    except google_calendar.GoogleCalendarError as exc:
+        logger.warning("Echec synchro Google Calendar pour RDV %s : %s", appointment_id, exc)
+        raise self.retry(exc=exc, countdown=300)
+
+
+@shared_task
+def sync_busy_periods_from_google():
+    """
+    Tâche Celery Beat — pour chaque praticien connecté à Google Calendar,
+    bloque les créneaux CabinBook disponibles qui chevauchent un événement
+    de son agenda perso (anti double-booking), et libère ceux précédemment
+    bloqués dont l'événement externe a disparu. Ne touche jamais un créneau
+    déjà occupé par un vrai RDV CabinBook.
+    """
+    from datetime import datetime
+    from apps.accounts.models import GoogleCalendarConnection
+    from apps.appointments.models import TimeSlot
+    from apps.accounts import google_calendar
+
+    now = timezone.now()
+    horizon = now + timedelta(days=14)
+    connections = GoogleCalendarConnection.objects.filter(
+        sync_busy_from_google=True
+    ).select_related("practitioner")
+
+    for connection in connections:
+        try:
+            busy_periods = google_calendar.get_busy_periods(connection, now, horizon)
+        except google_calendar.GoogleCalendarError as exc:
+            logger.warning(
+                "Echec recuperation freebusy Google Calendar pour praticien %s : %s",
+                connection.practitioner_id, exc,
+            )
+            continue
+
+        busy_ranges = [
+            (datetime.fromisoformat(period["start"]), datetime.fromisoformat(period["end"]))
+            for period in busy_periods
+        ]
+
+        slots = TimeSlot.objects.filter(
+            practitioner=connection.practitioner,
+            start_time__gte=now, start_time__lte=horizon,
+        )
+        for slot in slots:
+            is_busy = any(
+                b_start < slot.end_time and b_end > slot.start_time for b_start, b_end in busy_ranges
+            )
+            if is_busy and slot.is_available:
+                slot.is_available = False
+                slot.blocked_by_external_calendar = True
+                slot.save(update_fields=["is_available", "blocked_by_external_calendar"])
+            elif not is_busy and slot.blocked_by_external_calendar:
+                slot.is_available = True
+                slot.blocked_by_external_calendar = False
+                slot.save(update_fields=["is_available", "blocked_by_external_calendar"])

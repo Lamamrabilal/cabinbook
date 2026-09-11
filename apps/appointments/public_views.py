@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework import serializers as drf_serializers
 
 from apps.accounts.models import Practitioner, Patient
-from apps.appointments.models import Appointment, TimeSlot
+from apps.appointments.models import Appointment, TimeSlot, Review
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class PublicPractitionerSerializer(drf_serializers.ModelSerializer):
 
     class Meta:
         model = Practitioner
-        fields = ["id", "first_name", "last_name", "specialty_display", "booking_page_slug"]
+        fields = ["id", "first_name", "last_name", "specialty_display", "booking_page_slug", "deposit_amount_cents"]
 
 
 class PublicSlotSerializer(drf_serializers.ModelSerializer):
@@ -97,6 +97,9 @@ class PublicBookingView(APIView):
             except TimeSlot.DoesNotExist:
                 return Response({"error": "Ce créneau n'est plus disponible."}, status=409)
 
+            if slot.start_time < timezone.now():
+                return Response({"error": "Ce créneau n'est plus disponible."}, status=409)
+
             # Créer ou récupérer le patient
             patient, _ = Patient.objects.get_or_create(
                 practitioner=practitioner,
@@ -108,20 +111,73 @@ class PublicBookingView(APIView):
                 },
             )
 
-            # Créer le RDV
+            # Si un acompte est exigé, le RDV reste en attente jusqu'au paiement.
+            requires_deposit = practitioner.deposit_amount_cents > 0
             appointment = Appointment.objects.create(
                 practitioner=practitioner,
                 patient=patient,
                 timeslot=slot,
                 start_time=slot.start_time,
                 end_time=slot.end_time,
-                status=Appointment.STATUS_CONFIRMED,
+                status=Appointment.STATUS_PENDING if requires_deposit else Appointment.STATUS_CONFIRMED,
                 reason=data.get("reason", ""),
             )
 
-            # Marquer le créneau comme réservé
+            # Marquer le créneau comme réservé (y compris pendant l'attente de paiement,
+            # pour éviter un double-booking le temps que le patient paie).
             slot.is_available = False
             slot.save(update_fields=["is_available"])
+
+            if requires_deposit:
+                from apps.billing.models import Invoice
+                invoice = Invoice.objects.create(
+                    appointment=appointment, amount_cents=practitioner.deposit_amount_cents,
+                )
+
+        if requires_deposit:
+            import stripe
+
+            base_url = request.build_absolute_uri(f"/book/{slug}/")
+            try:
+                session = stripe.checkout.Session.create(
+                    mode="payment",
+                    payment_method_types=["card"],
+                    line_items=[{
+                        "price_data": {
+                            "currency": "eur",
+                            "unit_amount": invoice.amount_cents,
+                            "product_data": {"name": f"Acompte — RDV avec {practitioner}"},
+                        },
+                        "quantity": 1,
+                    }],
+                    customer_email=patient.email or None,
+                    success_url=f"{base_url}?deposit=success",
+                    cancel_url=f"{base_url}?deposit=cancelled",
+                    metadata={"invoice_id": str(invoice.pk), "appointment_id": str(appointment.pk)},
+                )
+            except stripe.error.StripeError as e:
+                logger.error("Erreur creation session acompte pour RDV %s: %s", appointment.pk, e)
+                return Response(
+                    {"error": "Impossible de démarrer le paiement de l'acompte. Réessayez dans un instant."},
+                    status=502,
+                )
+            invoice.stripe_checkout_session_id = session.id
+            invoice.save(update_fields=["stripe_checkout_session_id"])
+
+            logger.info("Nouveau RDV #%s (en attente d'acompte) via page publique (%s)", appointment.pk, slug)
+            return Response({
+                "message": "Un acompte est requis pour confirmer ce rendez-vous.",
+                "requires_payment": True,
+                "checkout_url": session.url,
+                "appointment": {
+                    "id": appointment.pk,
+                    "start_time": appointment.start_time,
+                    "end_time": appointment.end_time,
+                    "practitioner": str(practitioner),
+                    "cancellation_token": appointment.cancellation_token,
+                    "video_room_url": appointment.video_room_url,
+                },
+            }, status=201)
 
         # Envoyer confirmation email
         from apps.notifications.services import EmailService
@@ -135,12 +191,14 @@ class PublicBookingView(APIView):
 
         return Response({
             "message": "Votre rendez-vous est confirmé !",
+            "requires_payment": False,
             "appointment": {
                 "id": appointment.pk,
                 "start_time": appointment.start_time,
                 "end_time": appointment.end_time,
                 "practitioner": str(practitioner),
                 "cancellation_token": appointment.cancellation_token,
+                "video_room_url": appointment.video_room_url,
             }
         }, status=201)
 
@@ -174,3 +232,48 @@ class PublicCancelView(APIView):
 
         logger.info("RDV #%s annulé via lien public", appointment.pk)
         return Response({"message": "Votre rendez-vous a bien été annulé."})
+
+
+class PublicReviewView(APIView):
+    """
+    GET  /book/review/<token>/ — infos du RDV pour afficher le formulaire d'avis.
+    POST /book/review/<token>/ — soumission de l'avis { rating: 1-5, comment: "" }.
+    Le token est le confirmation_token du RDV (déjà connu du patient via les emails).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        appointment = get_object_or_404(Appointment, confirmation_token=token)
+        if appointment.status != Appointment.STATUS_DONE:
+            return Response({"error": "Cet avis n'est disponible qu'après la séance."}, status=400)
+        existing = getattr(appointment, "review", None)
+        return Response({
+            "practitioner": PublicPractitionerSerializer(appointment.practitioner).data,
+            "already_reviewed": existing is not None,
+            "existing_rating": existing.rating if existing else None,
+            "existing_comment": existing.comment if existing else "",
+        })
+
+    def post(self, request, token):
+        appointment = get_object_or_404(Appointment, confirmation_token=token)
+        if appointment.status != Appointment.STATUS_DONE:
+            return Response({"error": "Cet avis n'est disponible qu'après la séance."}, status=400)
+        if hasattr(appointment, "review"):
+            return Response({"error": "Vous avez déjà laissé un avis pour cette séance."}, status=400)
+
+        rating = request.data.get("rating")
+        try:
+            rating = int(rating)
+        except (TypeError, ValueError):
+            rating = None
+        if not rating or rating < 1 or rating > 5:
+            return Response({"error": "La note doit être comprise entre 1 et 5."}, status=400)
+
+        review = Review.objects.create(
+            appointment=appointment,
+            practitioner=appointment.practitioner,
+            rating=rating,
+            comment=(request.data.get("comment") or "")[:2000],
+        )
+        logger.info("Avis %s/5 déposé pour RDV #%s", rating, appointment.pk)
+        return Response({"message": "Merci pour votre avis !"}, status=201)

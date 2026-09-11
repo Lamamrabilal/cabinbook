@@ -72,6 +72,10 @@ yarn-error.log*
 *.swo
 Thumbs.db
 
+# ── Outils locaux (Claude Code, RTK) — état de session, pas du code projet ──
+.claude/
+.rtk/
+
 # ── Fichiers de scripts temporaires créés pendant le dev ────
 seed_data.py
 create_slots.py

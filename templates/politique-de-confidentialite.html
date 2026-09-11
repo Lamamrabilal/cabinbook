@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Politique de confidentialité — CabinBook</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      color: #0F1B2D;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+      line-height: 1.7;
+    }
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.25rem;
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      color: #1A7F72;
+    }
+    a { color: #1A7F72; }
+    .back-link { display: inline-block; margin-bottom: 2rem; font-size: 0.9rem; text-decoration: none; }
+    .placeholder {
+      background: #FEF3C7;
+      color: #92400E;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.95em;
+    }
+    .draft-notice {
+      background: #FDECEA;
+      border: 1px solid #C0392B;
+      color: #C0392B;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+    }
+    ul { padding-left: 1.25rem; }
+    li { margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <a href="/" class="back-link">← Retour à l'accueil</a>
+
+  <h1>Politique de confidentialité</h1>
+  <p style="color:#4A5568; font-size:0.9rem;">Dernière mise à jour : <span class="placeholder">[À COMPLÉTER]</span></p>
+
+  <div class="draft-notice">
+    <strong>⚠️ Page en cours de finalisation.</strong> CabinBook est actuellement en phase de développement/test,
+    sans patients ni praticiens réels. Cette politique sera revue et complétée par un professionnel avant tout
+    lancement commercial impliquant de véritables données de santé.
+  </div>
+
+  <h2>1. Qui sommes-nous</h2>
+  <p>
+    CabinBook est édité par <span class="placeholder">[À COMPLÉTER — raison sociale]</span>,
+    <span class="placeholder">[À COMPLÉTER — adresse]</span>.
+    Pour toute question relative à vos données personnelles : <span class="placeholder">[À COMPLÉTER — email]</span>.
+  </p>
+
+  <h2>2. Données que nous collectons</h2>
+  <p>Selon votre utilisation de CabinBook, nous pouvons être amenés à traiter :</p>
+  <ul>
+    <li><strong>Praticiens</strong> : nom, prénom, email, téléphone, spécialité, informations de facturation (via Stripe).</li>
+    <li><strong>Patients</strong> (saisies par le praticien ou par le patient lui-même via la page de réservation) :
+      nom, prénom, email, téléphone, motif de consultation, notes du praticien, et le cas échéant numéro de
+      sécurité sociale (carte Vitale).</li>
+  </ul>
+  <p>
+    <strong>Note sur le numéro de sécurité sociale (NIR) :</strong> cette donnée fait l'objet d'un encadrement
+    légal spécifique en France, distinct du RGPD général. <span class="placeholder">[À COMPLÉTER — base légale
+    précise de la collecte du NIR, à valider avec un professionnel avant toute collecte réelle]</span>.
+  </p>
+
+  <h2>3. Pourquoi nous collectons ces données</h2>
+  <ul>
+    <li>Permettre la prise de rendez-vous entre patients et praticiens</li>
+    <li>Envoyer des rappels automatiques (email et SMS) avant les rendez-vous</li>
+    <li>Gérer l'abonnement et la facturation du praticien (via Stripe)</li>
+    <li>Assurer le bon fonctionnement et la sécurité du service</li>
+  </ul>
+
+  <h2>4. Qui a accès à vos données</h2>
+  <p>
+    Les données patients sont visibles uniquement par le praticien concerné. CabinBook ne vend ni ne partage
+    vos données à des tiers à des fins commerciales. Certaines données transitent par nos sous-traitants
+    techniques :
+  </p>
+  <ul>
+    <li><strong>Stripe</strong> (paiement) — <a href="https://stripe.com/fr/privacy" target="_blank" rel="noopener">politique de confidentialité de Stripe</a></li>
+    <li><strong>SendGrid / Twilio</strong> (envoi d'emails et SMS)</li>
+    <li><strong>Hébergeur</strong> : <span class="placeholder">[À COMPLÉTER]</span></li>
+  </ul>
+
+  <h2>5. Sécurité</h2>
+  <p>
+    Les mots de passe sont chiffrés (hachage). Le numéro de carte Vitale, lorsqu'il est renseigné, est chiffré
+    au repos dans notre base de données. Les communications avec CabinBook sont sécurisées via HTTPS
+    <span class="placeholder">[à confirmer en production]</span>.
+  </p>
+
+  <h2>6. Durée de conservation</h2>
+  <p><span class="placeholder">[À COMPLÉTER — durées précises selon type de donnée, à définir avec un professionnel]</span></p>
+
+  <h2>7. Vos droits</h2>
+  <p>
+    Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, de suppression et de portabilité
+    de vos données. Pour exercer ces droits, contactez : <span class="placeholder">[À COMPLÉTER — email]</span>.
+  </p>
+  <p>
+    Vous pouvez également introduire une réclamation auprès de la
+    <a href="https://www.cnil.fr" target="_blank" rel="noopener">CNIL</a> si vous estimez que vos droits ne
+    sont pas respectés.
+  </p>
+
+  <h2>8. Cookies</h2>
+  <p><span class="placeholder">[À COMPLÉTER — préciser les cookies utilisés le cas échéant]</span></p>
+</body>
+</html>

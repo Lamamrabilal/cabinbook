@@ -6,7 +6,7 @@ const API_BASE = "http://localhost:8000";
 
 // ── Design tokens (cohérents avec la page de résa) ──────
 const T = {
-  navy:    "#0F1B2D",
+  navy:    "#0F@@ 1B2D",
   teal:    "#1A7F72",
   tealLt:  "#E8F5F3",
   tealMid: "#B2DDD8",

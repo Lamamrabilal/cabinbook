@@ -44,13 +44,13 @@
     .nav-links { display: flex; align-items: center; gap: 2rem; }
     .nav-links a { font-size: 0.875rem; color: var(--slate); text-decoration: none; font-weight: 500; }
     .nav-links a:hover { color: var(--teal); }
-    .btn-nav {
+    a.btn-nav {
       background: var(--navy); color: var(--white);
       padding: 0.5rem 1.25rem; border-radius: 99px;
       font-size: 0.875rem; font-weight: 600;
       text-decoration: none; transition: background 0.2s;
     }
-    .btn-nav:hover { background: var(--teal); color: var(--white); }
+    a.btn-nav:hover { background: var(--teal); color: var(--white); }
 
     /* ── HERO ── */
     .hero {
@@ -368,6 +368,7 @@
     <a href="#features">Fonctionnalités</a>
     <a href="#pricing">Tarifs</a>
     <a href="#testimonials">Avis</a>
+    <a href="/annuaire/">Trouver un praticien</a>
     <a href="#pricing" class="btn-nav">Essai gratuit →</a>
   </div>
 </nav>
@@ -378,7 +379,7 @@
   <h1>Fini les patients qui <em>oublient</em> leur rendez-vous.</h1>
   <p class="hero-sub">CabinBook envoie des rappels automatiques par email et SMS. Vos patients confirment en un clic. Vos créneaux ne se perdent plus.</p>
   <div class="hero-cta">
-    <a href="#pricing" class="btn-primary">Démarrer — 30 jours gratuits</a>
+    <a href="http://localhost:5173/?signup=1" class="btn-primary">Démarrer — 30 jours gratuits</a>
     <a href="#features" class="btn-ghost">Voir comment ça marche</a>
   </div>
 
@@ -417,10 +418,10 @@
 
 <!-- TRUST BAR -->
 <div class="trust-bar">
-  <div class="trust-item">⭐ <strong>4.9/5</strong> sur 120+ avis</div>
-  <div class="trust-item">📉 <strong>–68%</strong> de no-shows en moyenne</div>
+  <div class="trust-item">🚀 <strong>Nouveau</strong> · Rejoignez les premiers praticiens</div>
   <div class="trust-item">⚡ <strong>15 min</strong> pour être opérationnel</div>
-  <div class="trust-item">🔒 <strong>RGPD</strong> · Données hébergées en France</div>
+  <div class="trust-item">⚡ <strong>15 min</strong> pour être opérationnel</div>
+  <div class="trust-item">🔒 <strong>Sécurisé</strong> · Vos données restent confidentielles</div>
 </div>
 
 <!-- FEATURES -->
@@ -451,14 +452,44 @@
       <div class="feature-desc">Historique des RDV, coordonnées, notes internes. Tout au même endroit, accessible en 2 clics.</div>
     </div>
     <div class="feature-card">
+      <div class="feature-icon">📇</div>
+      <div class="feature-title">Import de patientèle</div>
+      <div class="feature-desc">Vous changez d'outil ? Importez toute votre patientèle existante depuis un fichier CSV en quelques secondes.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💳</div>
+      <div class="feature-title">Acompte à la réservation</div>
+      <div class="feature-desc">Exigez un acompte payé par carte au moment de la prise de RDV en ligne. Moins de désistements de dernière minute.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎥</div>
+      <div class="feature-title">Téléconsultation intégrée</div>
+      <div class="feature-desc">Activez la visio pour vos consultations à distance : un lien de visioconférence est généré automatiquement pour chaque RDV.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🚪</div>
+      <div class="feature-title">Gestion de salles</div>
+      <div class="feature-desc">Cabinet partagé à plusieurs praticiens ? Assignez chaque RDV à une salle et évitez les doubles réservations.</div>
+    </div>
+    <div class="feature-card">
       <div class="feature-icon">🏢</div>
       <div class="feature-title">Multi-praticiens</div>
       <div class="feature-desc">Vous gérez un cabinet à plusieurs ? Le plan Cabinet permet jusqu'à 5 praticiens avec des agendas indépendants.</div>
     </div>
     <div class="feature-card">
+      <div class="feature-icon">👩‍💼</div>
+      <div class="feature-title">Comptes secrétaire</div>
+      <div class="feature-desc">Donnez à votre secrétariat un accès dédié pour gérer l'agenda et les patients, sans accès aux notes de séance confidentielles.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔐</div>
+      <div class="feature-title">Double authentification (2FA)</div>
+      <div class="feature-desc">Sécurisez l'accès à votre compte avec un code à usage unique généré par une app d'authentification, comme votre banque.</div>
+    </div>
+    <div class="feature-card">
       <div class="feature-icon">🔒</div>
       <div class="feature-title">Sécurité & RGPD</div>
-      <div class="feature-desc">Données chiffrées, hébergées en France. Conformité RGPD incluse. Aucune donnée patient revendue.</div>
+      <div class="feature-desc">Chiffrement des données sensibles. Aucune donnée patient revendue à des tiers.</div>
     </div>
   </div>
 </section>
@@ -493,35 +524,14 @@
 
 <!-- TESTIMONIALS -->
 <section id="testimonials" style="background:var(--cream); max-width:none; padding: 5rem 2rem;">
-  <div style="max-width:1100px; margin:0 auto;">
-    <span class="section-eyebrow">Témoignages</span>
-    <h2 class="section-title">Ce que disent nos praticiens</h2>
-    <div class="testimonials-grid">
-      <div class="testimonial-card">
-        <div class="stars">★★★★★</div>
-        <p class="testimonial-text">"Avant CabinBook, j'avais 4 à 5 no-shows par semaine. Maintenant c'est 1 par mois maximum. Le calcul est vite fait."</p>
-        <div class="testimonial-author">
-          <div class="author-avatar">SL</div>
-          <div><div class="author-name">Sophie L.</div><div class="author-title">Kinésithérapeute — Lyon</div></div>
-        </div>
-      </div>
-      <div class="testimonial-card">
-        <div class="stars">★★★★★</div>
-        <p class="testimonial-text">"Mes patients adorent pouvoir réserver en ligne à n'importe quelle heure. Et moi j'adore ne plus répondre au téléphone entre deux séances."</p>
-        <div class="testimonial-author">
-          <div class="author-avatar">MR</div>
-          <div><div class="author-name">Marc R.</div><div class="author-title">Ostéopathe — Paris 11e</div></div>
-        </div>
-      </div>
-      <div class="testimonial-card">
-        <div class="stars">★★★★★</div>
-        <p class="testimonial-text">"J'ai testé 3 logiciels avant CabinBook. C'est le seul qui ne m'a pas pris une demi-journée à configurer. En 20 minutes c'était en ligne."</p>
-        <div class="testimonial-author">
-          <div class="author-avatar">CB</div>
-          <div><div class="author-name">Claire B.</div><div class="author-title">Psychologue — Bordeaux</div></div>
-        </div>
-      </div>
-    </div>
+  <div style="max-width:1100px; margin:0 auto; text-align:center;">
+    <span class="section-eyebrow">Nouveau</span>
+    <h2 class="section-title" style="margin:0 auto 1rem;">Soyez parmi les premiers praticiens CabinBook</h2>
+    <p class="section-sub" style="margin:0 auto;">
+      CabinBook vient tout juste d'être lancé. Profitez de 30 jours d'essai gratuit
+      pour tester l'outil sans engagement, et faites partie des premiers retours
+      qui façonneront les prochaines fonctionnalités.
+    </p>
   </div>
 </section>
 
@@ -540,10 +550,13 @@
         <li>1 praticien</li>
         <li>Rappels email automatiques</li>
         <li>Page de réservation publique</li>
+        <li>Acompte à la réservation</li>
+        <li>Téléconsultation & double authentification (2FA)</li>
+        <li>Import CSV de patientèle</li>
         <li>Tableau de bord</li>
         <li>Support par email</li>
       </ul>
-      <a href="#" class="btn-plan btn-plan-outline">Démarrer gratuitement</a>
+      <a href="http://localhost:5173/?signup=1&plan=starter" class="btn-plan btn-plan-outline">Démarrer gratuitement</a>
     </div>
     <div class="pricing-card featured">
       <div class="popular-badge">Le plus choisi</div>
@@ -551,28 +564,30 @@
       <div class="plan-price">49€ <span>/ mois</span></div>
       <div class="plan-desc">Email + SMS. Zéro no-show, vraiment.</div>
       <ul class="plan-features">
-        <li>1 praticien</li>
+        <li>Tout Starter, inclus</li>
         <li>Rappels email <strong>et SMS</strong></li>
-        <li>Page de réservation publique</li>
+        <li>Rendez-vous récurrents</li>
+        <li>1 compte secrétaire</li>
         <li>Tableau de bord avancé</li>
         <li>Export agenda (iCal)</li>
         <li>Support prioritaire</li>
       </ul>
-      <a href="#" class="btn-plan btn-plan-primary">Démarrer gratuitement</a>
+      <a href="http://localhost:5173/?signup=1&plan=pro" class="btn-plan btn-plan-primary">Démarrer gratuitement</a>
     </div>
     <div class="pricing-card">
       <div class="plan-name">Cabinet</div>
       <div class="plan-price">99€ <span>/ mois</span></div>
       <div class="plan-desc">Pour les cabinets partagés.</div>
       <ul class="plan-features">
+        <li>Tout Pro, inclus</li>
         <li>Jusqu'à 5 praticiens</li>
-        <li>Rappels email et SMS</li>
         <li>Agendas indépendants</li>
-        <li>Tableau de bord multi-praticiens</li>
-        <li>Export & statistiques avancées</li>
+        <li>Jusqu'à 3 comptes secrétaire</li>
+        <li>Gestion de salles partagées</li>
+        <li>Statistiques par praticien</li>
         <li>Support téléphonique</li>
       </ul>
-      <a href="#" class="btn-plan btn-plan-outline">Démarrer gratuitement</a>
+      <a href="http://localhost:5173/?signup=1&plan=cabinet" class="btn-plan btn-plan-outline">Démarrer gratuitement</a>
     </div>
   </div>
 </section>
@@ -588,10 +603,10 @@
 <footer>
   <div class="footer-logo">Cabin<span>Book</span></div>
   <div class="footer-links">
-    <a href="#">Mentions légales</a>
-    <a href="#">Politique de confidentialité</a>
-    <a href="#">RGPD</a>
-    <a href="#">Contact</a>
+    <a href="/mentions-legales/">Mentions légales</a>
+    <a href="/politique-de-confidentialite/">Politique de confidentialité</a>
+    <a href="/politique-de-confidentialite/">RGPD</a>
+    <a href="/contact/">Contact</a>
   </div>
   <div style="font-size:0.75rem; color:rgba(255,255,255,0.25);">© 2026 CabinBook</div>
 </footer>
