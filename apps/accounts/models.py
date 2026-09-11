@@ -103,6 +103,11 @@ class Practitioner(models.Model):
 
     class Meta:
         verbose_name = "Praticien"
+        indexes = [
+            # Annuaire public (apps/accounts/public_views.py) : seule requête qui
+            # scanne les praticiens de tous les comptes du SaaS, pas juste un cabinet.
+            models.Index(fields=["is_listed", "is_active"], name="practitioner_listed_active_idx"),
+        ]
 
     def __str__(self):
         return f"Dr {self.last_name} ({self.get_specialty_display()})"

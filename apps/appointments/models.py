@@ -15,6 +15,14 @@ class TimeSlot(models.Model):
 
     class Meta:
         ordering = ["start_time"]
+        indexes = [
+            # Sélecteur de créneau (praticien) et page de réservation publique
+            # filtrent toujours practitioner + is_available, triés par start_time.
+            models.Index(
+                fields=["practitioner", "is_available", "start_time"],
+                name="slot_practitioner_avail_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.practitioner} — {self.start_time:%d/%m %H:%M}"
@@ -104,6 +112,15 @@ class Appointment(models.Model):
     class Meta:
         ordering = ["-start_time"]
         verbose_name = "Rendez-vous"
+        indexes = [
+            # Agenda, stats et export iCal filtrent tous par practitioner (+ souvent
+            # status), triés/filtrés par start_time.
+            models.Index(fields=["practitioner", "start_time"], name="appt_practitioner_start_idx"),
+            models.Index(
+                fields=["practitioner", "status", "start_time"],
+                name="appt_practitioner_status_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.patient} chez {self.practitioner} — {self.start_time:%d/%m/%Y %H:%M}"

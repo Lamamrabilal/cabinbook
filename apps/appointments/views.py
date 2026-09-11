@@ -55,7 +55,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Appointment.objects.filter(
             practitioner__owner=self.request.user.effective_owner
-        ).select_related("patient", "practitioner__owner", "series")
+        ).select_related("patient", "practitioner__owner", "series", "room", "session_note")
 
         # Filtre optionnel par praticien precis (compte multi-praticiens)
         practitioner_id = self.request.query_params.get("practitioner")
