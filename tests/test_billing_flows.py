@@ -203,3 +203,86 @@ class TestDuplicateInvoiceOnSameAppointment:
             "appointment": appointment.id, "amount_cents": 4500,
         }, format="json")
         assert second.status_code == 400, second.data
+
+
+class TestInvoiceListView:
+    """Vue de facturation centralisée (liste de toutes les factures du cabinet)."""
+
+    def test_list_includes_patient_and_practitioner_names(self, owner_client, appointment):
+        owner_client.post("/api/billing/invoices/", {
+            "appointment": appointment.id, "amount_cents": 4500,
+        }, format="json")
+
+        res = owner_client.get("/api/billing/invoices/")
+        assert res.status_code == 200, res.data
+        assert len(res.data) == 1
+        assert res.data[0]["patient_name"] == "Marie Martin"
+        assert res.data[0]["practitioner_name"] == str(appointment.practitioner)
+
+    def test_filter_by_status(self, owner_client, appointment):
+        created = owner_client.post("/api/billing/invoices/", {
+            "appointment": appointment.id, "amount_cents": 4500,
+        }, format="json").data
+        owner_client.post(f"/api/billing/invoices/{created['id']}/mark_paid/")
+
+        unpaid = owner_client.get("/api/billing/invoices/?status=unpaid")
+        assert unpaid.data == []
+
+        paid = owner_client.get("/api/billing/invoices/?status=paid")
+        assert len(paid.data) == 1
+        assert paid.data[0]["id"] == created["id"]
+
+    def test_filter_by_practitioner(self, owner_client, owner, appointment):
+        from apps.accounts.models import Practitioner, Patient
+        from apps.appointments.models import Appointment
+
+        other_practitioner = Practitioner.objects.create(
+            owner=owner, first_name="Sophie", last_name="Bernard", specialty="osteo",
+            booking_page_slug="sophie-bernard-billing-test",
+        )
+        other_patient = Patient.objects.create(
+            practitioner=other_practitioner, first_name="Léo", last_name="Petit",
+            email="leo@example.com",
+        )
+        other_appointment = Appointment.objects.create(
+            practitioner=other_practitioner, patient=other_patient,
+            start_time=timezone.now() - timedelta(hours=1), end_time=timezone.now(),
+            status=Appointment.STATUS_DONE,
+        )
+        owner_client.post("/api/billing/invoices/", {
+            "appointment": appointment.id, "amount_cents": 4500,
+        }, format="json")
+        owner_client.post("/api/billing/invoices/", {
+            "appointment": other_appointment.id, "amount_cents": 3000,
+        }, format="json")
+
+        res = owner_client.get(f"/api/billing/invoices/?practitioner={other_practitioner.id}")
+        assert len(res.data) == 1
+        assert res.data[0]["practitioner_name"] == str(other_practitioner)
+
+    def test_invoices_from_another_tenant_are_not_listed(self, owner_client, django_user_model):
+        from apps.accounts.models import Practitioner, Patient
+        from apps.appointments.models import Appointment
+
+        other_owner = django_user_model.objects.create_user(
+            username="other-billing-owner@example.com", email="other-billing-owner@example.com",
+            password="testpass123", plan="pro", is_subscription_active=True,
+        )
+        other_practitioner = Practitioner.objects.create(
+            owner=other_owner, first_name="Alex", last_name="Roux", specialty="psy",
+            booking_page_slug="alex-roux-billing-test",
+        )
+        other_patient = Patient.objects.create(
+            practitioner=other_practitioner, first_name="Nina", last_name="Simon",
+            email="nina@example.com",
+        )
+        other_appointment = Appointment.objects.create(
+            practitioner=other_practitioner, patient=other_patient,
+            start_time=timezone.now() - timedelta(hours=1), end_time=timezone.now(),
+            status=Appointment.STATUS_DONE,
+        )
+        from apps.billing.models import Invoice
+        Invoice.objects.create(appointment=other_appointment, amount_cents=5000)
+
+        res = owner_client.get("/api/billing/invoices/")
+        assert res.data == []

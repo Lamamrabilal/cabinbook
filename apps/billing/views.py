@@ -27,10 +27,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Invoice.objects.filter(
             appointment__practitioner__owner=self.request.user.effective_owner
-        ).select_related("appointment__patient", "appointment__practitioner")
+        ).select_related("appointment__patient", "appointment__practitioner").order_by("-created_at")
         appointment_id = self.request.query_params.get("appointment")
         if appointment_id:
             qs = qs.filter(appointment_id=appointment_id)
+        practitioner_id = self.request.query_params.get("practitioner")
+        if practitioner_id:
+            qs = qs.filter(appointment__practitioner_id=practitioner_id)
+        status = self.request.query_params.get("status")
+        if status:
+            qs = qs.filter(status=status)
         return qs
 
     @action(detail=True, methods=["post"])

@@ -379,7 +379,15 @@ const NAV = [
   { id: "agenda",    icon: "📅", label: "Agenda"          },
   { id: "patients",  icon: "👥", label: "Patients"        },
   { id: "waitlist",  icon: "⏳", label: "Liste d'attente" },
+  { id: "invoices",  icon: "🧾", label: "Factures"        },
   { id: "settings",  icon: "⚙️",  label: "Paramètres"     },
+];
+
+const INVOICE_STATUS_FILTERS = [
+  { id: "",         label: "Toutes"     },
+  { id: "unpaid",   label: "Non payées" },
+  { id: "paid",     label: "Payées"     },
+  { id: "refunded", label: "Remboursées" },
 ];
 
 function Sidebar({ active, onNav, onLogout, userLabel, allPractitioners, practitionerFilter, onPractitionerChange }) {
@@ -1146,6 +1154,262 @@ function WaitlistView({ apiFetch, practitionerFilter }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Vue Factures (facturation centralisée) ────────────────
+function InvoicesView({ apiFetch, allPractitioners, plan }) {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  // Sélecteur propre à cette vue — indépendant de celui de la sidebar, qui ne
+  // permet de voir qu'un praticien à la fois. Une vue de facturation centralisée
+  // doit pouvoir montrer tout le cabinet d'un coup, par défaut.
+  const [practitionerId, setPractitionerId] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (practitionerId) params.set("practitioner", practitionerId);
+      if (statusFilter) params.set("status", statusFilter);
+      const qs = params.toString();
+      const data = await apiFetch(`/api/billing/invoices/${qs ? `?${qs}` : ""}`);
+      setInvoices(data || []);
+    } catch (err) {
+      setError(err.message || "Erreur de chargement.");
+    } finally {
+      setLoading(false);
+    }
+  }, [apiFetch, practitionerId, statusFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const showPractitionerColumn = plan === "cabinet" && allPractitioners.length > 1 && !practitionerId;
+  const unpaidTotalCents = invoices
+    .filter(inv => inv.status === "unpaid")
+    .reduce((sum, inv) => sum + inv.amount_cents, 0);
+
+  const handleUpdated = (updated) => {
+    setInvoices(prev => prev.map(inv => inv.id === updated.id ? { ...inv, ...updated } : inv));
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.navy }}>Factures</h1>
+          <p style={{ fontSize: 12.5, color: T.slate, marginTop: 2 }}>
+            {unpaidTotalCents > 0
+              ? `${(unpaidTotalCents / 100).toFixed(2)} € en attente de paiement`
+              : "Aucun montant en attente de paiement."}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {allPractitioners.length > 1 && (
+            <select value={practitionerId} onChange={e => setPractitionerId(e.target.value)} style={{
+              ...inputStyle, background: T.white, fontSize: 12.5, padding: "0.4rem 0.6rem", width: "auto",
+            }}>
+              <option value="">Tous les praticiens</option>
+              {allPractitioners.map(p => (
+                <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>
+              ))}
+            </select>
+          )}
+          <div style={{ display: "flex", gap: 6 }}>
+            {INVOICE_STATUS_FILTERS.map(f => (
+              <button key={f.id} onClick={() => setStatusFilter(f.id)} style={{
+                background: statusFilter === f.id ? T.navy : "transparent",
+                color: statusFilter === f.id ? T.white : T.slate,
+                border: `1px solid ${statusFilter === f.id ? T.navy : T.border}`,
+                borderRadius: 8, padding: "0.4rem 0.8rem", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ color: T.red, fontSize: 12, marginBottom: 12, background: T.redLt, padding: "0.5rem 0.75rem", borderRadius: 8 }}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <LoadingState label="Chargement des factures…" />
+      ) : (
+        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: showPractitionerColumn ? "1fr 1.3fr 1.3fr 0.9fr 0.9fr 2fr" : "1fr 1.3fr 0.9fr 0.9fr 2fr",
+            padding: "0.6rem 1.25rem", borderBottom: `1px solid ${T.border}`,
+            fontSize: 11, fontWeight: 700, color: T.slate, textTransform: "uppercase", letterSpacing: "0.06em",
+          }}>
+            <span>Date</span>
+            <span>Patient</span>
+            {showPractitionerColumn && <span>Praticien</span>}
+            <span>Montant</span>
+            <span>Statut</span>
+            <span>Actions</span>
+          </div>
+          {invoices.length === 0 && (
+            <div style={{ padding: "1.25rem", fontSize: 13, color: T.slate }}>Aucune facture trouvée.</div>
+          )}
+          {invoices.map(inv => (
+            <InvoiceRow key={inv.id} invoice={inv} apiFetch={apiFetch}
+              showPractitionerColumn={showPractitionerColumn} onUpdated={handleUpdated} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InvoiceRow({ invoice, apiFetch, showPractitionerColumn, onUpdated }) {
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [amountValue, setAmountValue] = useState("");
+  const [rowError, setRowError] = useState("");
+
+  const markPaid = async () => {
+    setBusy(true);
+    setRowError("");
+    try {
+      const updated = await apiFetch(`/api/billing/invoices/${invoice.id}/mark_paid/`, { method: "POST" });
+      onUpdated(updated);
+    } catch (err) {
+      setRowError(err.message || "Action impossible.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startEdit = () => {
+    setAmountValue((invoice.amount_cents / 100).toFixed(2));
+    setRowError("");
+    setEditing(true);
+  };
+
+  const saveAmount = async () => {
+    const cents = Math.round(parseFloat(amountValue.replace(",", ".")) * 100);
+    if (!cents || cents <= 0) { setRowError("Montant invalide."); return; }
+    setBusy(true);
+    setRowError("");
+    try {
+      const updated = await apiFetch(`/api/billing/invoices/${invoice.id}/`, {
+        method: "PATCH", body: JSON.stringify({ amount_cents: cents }),
+      });
+      onUpdated(updated);
+      setEditing(false);
+    } catch (err) {
+      setRowError(err.message || "Impossible de modifier le montant.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendPaymentLink = async () => {
+    setBusy(true);
+    setRowError("");
+    try {
+      const { checkout_url } = await apiFetch(`/api/billing/invoices/${invoice.id}/create_payment_link/`, { method: "POST" });
+      await navigator.clipboard.writeText(checkout_url).catch(() => {});
+      window.open(checkout_url, "_blank", "noopener");
+    } catch (err) {
+      setRowError(err.message || "Impossible de créer le lien de paiement.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refund = async () => {
+    if (!window.confirm("Rembourser cette facture ? Si elle a été payée par carte, le remboursement Stripe est immédiat et irréversible.")) return;
+    setBusy(true);
+    setRowError("");
+    try {
+      const updated = await apiFetch(`/api/billing/invoices/${invoice.id}/refund/`, { method: "POST" });
+      onUpdated(updated);
+    } catch (err) {
+      setRowError(err.message || "Impossible de rembourser cette facture.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ borderBottom: `1px solid ${T.border}`, padding: "0.75rem 1.25rem" }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: showPractitionerColumn ? "1fr 1.3fr 1.3fr 0.9fr 0.9fr 2fr" : "1fr 1.3fr 0.9fr 0.9fr 2fr",
+        fontSize: 13, alignItems: "center", gap: 8,
+      }}>
+        <span style={{ color: T.slate, fontSize: 12 }}>
+          {invoice.appointment_date ? new Date(invoice.appointment_date).toLocaleDateString("fr-FR") : "—"}
+        </span>
+        <span style={{ fontWeight: 600, color: T.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {invoice.patient_name}
+        </span>
+        {showPractitionerColumn && (
+          <span style={{ color: T.slate, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {invoice.practitioner_name}
+          </span>
+        )}
+        {editing ? (
+          <input type="text" inputMode="decimal" value={amountValue} onChange={e => setAmountValue(e.target.value)}
+            style={{ ...inputStyle, background: T.white, fontSize: 12.5, padding: "0.3rem 0.5rem" }} />
+        ) : (
+          <span style={{ fontWeight: 700, color: T.navy }}>{(invoice.amount_cents / 100).toFixed(2)} €</span>
+        )}
+        <span style={{
+          fontSize: 11, fontWeight: 700, padding: "0.15rem 0.5rem", borderRadius: 6, width: "fit-content",
+          background: invoice.status === "paid" ? T.tealLt : invoice.status === "refunded" ? "#F0F0F0" : T.amberLt,
+          color: invoice.status === "paid" ? T.teal : invoice.status === "refunded" ? T.slate : T.amber,
+        }}>
+          {invoice.status_display}
+        </span>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {editing ? (
+            <>
+              <button onClick={saveAmount} disabled={busy} style={{
+                background: T.navy, color: T.white, border: "none", borderRadius: 7,
+                padding: "0.3rem 0.6rem", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              }}>{busy ? "…" : "Enregistrer"}</button>
+              <button onClick={() => setEditing(false)} disabled={busy} style={{
+                background: "transparent", color: T.slate, border: `1px solid ${T.border}`, borderRadius: 7,
+                padding: "0.3rem 0.6rem", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              }}>Annuler</button>
+            </>
+          ) : invoice.status === "unpaid" ? (
+            <>
+              <button onClick={startEdit} disabled={busy} style={{
+                background: "transparent", color: T.navy, border: `1px solid ${T.border}`, borderRadius: 7,
+                padding: "0.3rem 0.6rem", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              }}>Modifier</button>
+              <button onClick={markPaid} disabled={busy} style={{
+                background: T.teal, color: T.white, border: "none", borderRadius: 7,
+                padding: "0.3rem 0.6rem", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              }}>{busy ? "…" : "Marquer payée"}</button>
+              <button onClick={sendPaymentLink} disabled={busy} style={{
+                background: "transparent", color: T.navy, border: `1px solid ${T.border}`, borderRadius: 7,
+                padding: "0.3rem 0.6rem", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              }}>Lien de paiement</button>
+            </>
+          ) : invoice.status === "paid" ? (
+            <button onClick={refund} disabled={busy} style={{
+              background: "transparent", color: T.red, border: `1px solid ${T.red}`, borderRadius: 7,
+              padding: "0.3rem 0.6rem", fontSize: 11, fontWeight: 700, cursor: "pointer",
+            }}>{busy ? "…" : "Rembourser"}</button>
+          ) : (
+            <span style={{ color: T.slate, fontSize: 11.5 }}>—</span>
+          )}
+        </div>
+      </div>
+      {rowError && <p style={{ fontSize: 11, color: T.red, marginTop: 6 }}>{rowError}</p>}
     </div>
   );
 }
@@ -4175,6 +4439,7 @@ export default function App() {
     patients:  <PatientsView apiFetch={apiFetch} practitionerFilter={practitionerFilter} plan={me?.plan} role={me?.role} />,
     waitlist:  <WaitlistView apiFetch={apiFetch} practitionerFilter={practitionerFilter} />,
     settings:  <SettingsView apiFetch={apiFetch} plan={me?.plan} isSubscriptionActive={me?.is_subscription_active} practitionerFilter={practitionerFilter} role={me?.role} ownerName={me?.owner_name} otpEnabled={me?.otp_enabled} onMeUpdated={loadMe} calendarReturn={calendarReturn} onCalendarReturnHandled={() => setCalendarReturn(null)} />,
+    invoices:  <InvoicesView apiFetch={apiFetch} allPractitioners={allPractitioners} plan={me?.plan} />,
   };
 
   return (

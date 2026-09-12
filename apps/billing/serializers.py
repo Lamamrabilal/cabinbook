@@ -5,13 +5,14 @@ from apps.billing.models import Invoice
 class InvoiceSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     patient_name = serializers.SerializerMethodField()
+    practitioner_name = serializers.CharField(source="appointment.practitioner.__str__", read_only=True)
     appointment_date = serializers.DateTimeField(source="appointment.start_time", read_only=True)
 
     class Meta:
         model = Invoice
         fields = [
             "id", "appointment", "amount_cents", "status", "status_display",
-            "patient_name", "appointment_date", "paid_at", "refunded_at", "created_at",
+            "patient_name", "practitioner_name", "appointment_date", "paid_at", "refunded_at", "created_at",
         ]
         read_only_fields = ["status", "paid_at", "refunded_at", "created_at"]
 
