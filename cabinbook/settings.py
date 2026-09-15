@@ -100,6 +100,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.sync_busy_periods_from_google",
         "schedule": crontab(minute="*/15"),
     },
+    "purge-old-timeslots-daily": {
+        "task": "apps.notifications.tasks.purge_old_timeslots",
+        "schedule": crontab(hour=3, minute=0),
+    },
 }
 
 # JWT

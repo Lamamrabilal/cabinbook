@@ -119,12 +119,20 @@ def generate_slots_for_rule(rule, horizon_days=14):
     immédiatement à la création/activation d'une règle, pour que les
     créneaux du jour et du lendemain soient réservables sans attendre le
     prochain passage de la tâche planifiée.
+
+    Calcule d'abord tous les créneaux candidats en mémoire, puis ne fait que
+    deux requêtes SQL au total (un SELECT pour connaître les créneaux déjà
+    existants, un bulk_create pour les manquants) au lieu d'un get_or_create
+    par créneau — déterminant pour une règle couvrant une longue plage
+    horaire ou un horizon de plusieurs semaines.
     """
     from datetime import timedelta, datetime
     from apps.appointments.models import TimeSlot
 
     today = timezone.now().date()
-    created_count = 0
+    now = timezone.now()
+    duration = timedelta(minutes=rule.slot_duration_minutes)
+    candidates = []
 
     for offset in range(horizon_days):
         day = today + timedelta(days=offset)
@@ -133,26 +141,31 @@ def generate_slots_for_rule(rule, horizon_days=14):
 
         current_dt = timezone.make_aware(datetime.combine(day, rule.start_time))
         end_dt = timezone.make_aware(datetime.combine(day, rule.end_time))
-        duration = timedelta(minutes=rule.slot_duration_minutes)
 
         while current_dt + duration <= end_dt:
             slot_end = current_dt + duration
-            if current_dt < timezone.now():
-                # Le créneau du jour même est déjà passé (règle appliquée
-                # à "aujourd'hui" mais tâche exécutée en cours de journée) :
-                # ne pas le créer.
-                current_dt = slot_end
-                continue
-            _, created = TimeSlot.objects.get_or_create(
-                practitioner=rule.practitioner,
-                start_time=current_dt,
-                defaults={"end_time": slot_end, "is_available": True},
-            )
-            if created:
-                created_count += 1
+            if current_dt >= now:
+                candidates.append((current_dt, slot_end))
             current_dt = slot_end
 
-    return created_count
+    if not candidates:
+        return 0
+
+    existing_starts = set(
+        TimeSlot.objects.filter(
+            practitioner=rule.practitioner,
+            start_time__in=[start for start, _ in candidates],
+        ).values_list("start_time", flat=True)
+    )
+
+    new_slots = [
+        TimeSlot(practitioner=rule.practitioner, start_time=start, end_time=end, is_available=True)
+        for start, end in candidates
+        if start not in existing_starts
+    ]
+    TimeSlot.objects.bulk_create(new_slots)
+
+    return len(new_slots)
 
 
 @shared_task
@@ -171,6 +184,26 @@ def generate_slots_from_availability():
 
     logger.info("%d nouveaux creneaux generes depuis les regles de disponibilite.", created_count)
     return created_count
+
+
+@shared_task
+def purge_old_timeslots():
+    """
+    Tâche Celery Beat — supprime les créneaux (TimeSlot) dont l'horaire de
+    début remonte à plus d'un jour, pour empêcher la table de croître
+    indéfiniment (elle est régénérée quotidiennement par
+    generate_slots_from_availability, donc les vieux créneaux passés
+    n'ont plus aucune utilité). Sans danger pour l'historique des RDV :
+    Appointment.timeslot est en SET_NULL et chaque RDV conserve son propre
+    start_time/end_time indépendamment du TimeSlot d'origine.
+    """
+    from apps.appointments.models import TimeSlot
+
+    cutoff = timezone.now() - timedelta(days=1)
+    deleted_count, _ = TimeSlot.objects.filter(start_time__lt=cutoff).delete()
+
+    logger.info("%d anciens creneaux purges (anterieurs a %s).", deleted_count, cutoff)
+    return deleted_count
 
 
 @shared_task(bind=True, max_retries=3)
