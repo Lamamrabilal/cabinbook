@@ -68,3 +68,9 @@
 | POST | `/book/{slug}/book/` | Prendre un RDV (sans auth) |
 | GET | `/book/confirm/{token}/` | Confirmer présence |
 | GET | `/book/cancel/{token}/` | Annuler via lien email |
+
+## Réservation publique en langage naturel (IA)
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| POST | `/api/public/book/<slug>/suggest/` | Body `{"message": "un rdv mardi après-midi"}` (3 à 300 caractères). Le LLM (API Claude) traduit la phrase en critères (jours, plage horaire, période) ; les créneaux réellement disponibles sont ensuite filtrés en base. Réponse : `{"interpreted": "...", "slots": [...]}`. 10 requêtes/heure/IP ; 503 si `ANTHROPIC_API_KEY` est vide, 422 si phrase incomprise, 502 si l'API échoue. |

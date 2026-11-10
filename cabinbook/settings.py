@@ -127,6 +127,11 @@ STRIPE_PRICES = {
     "cabinet": os.getenv("STRIPE_PRICE_CABINET"),
 }
 
+# IA — réservation en langage naturel (API Claude). Sans clé, la fonctionnalité
+# est désactivée (503) et la page de réservation fonctionne normalement.
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-5-5")
+
 # Twilio (SMS + WhatsApp)
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")

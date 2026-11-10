@@ -2,6 +2,7 @@ from django.urls import path
 from apps.appointments.public_views import (
     PublicPractitionerView,
     PublicBookingView,
+    PublicSuggestSlotsView,
     PublicConfirmView,
     PublicCancelView,
     PublicReviewView,
@@ -13,4 +14,5 @@ urlpatterns = [
     path("cancel/<str:token>/", PublicCancelView.as_view(), name="public-cancel"),
     path("<slug:slug>/", PublicPractitionerView.as_view(), name="public-practitioner"),
     path("<slug:slug>/book/", PublicBookingView.as_view(), name="public-book"),
+    path("<slug:slug>/suggest/", PublicSuggestSlotsView.as_view(), name="public-suggest"),
 ]

@@ -9,6 +9,8 @@ from rest_framework import serializers as drf_serializers
 
 from apps.accounts.models import Practitioner, Patient
 from apps.appointments.models import Appointment, TimeSlot, Review
+from apps.appointments import ai_booking
+from apps.accounts.throttling import AISuggestRateThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,10 @@ class PublicBookingSerializer(drf_serializers.Serializer):
     reason = drf_serializers.CharField(max_length=500, required=False, allow_blank=True)
 
 
+class PublicSuggestSerializer(drf_serializers.Serializer):
+    message = drf_serializers.CharField(min_length=3, max_length=ai_booking.MAX_MESSAGE_LENGTH)
+
+
 # --- Vues publiques ---
 
 class PublicPractitionerView(APIView):
@@ -64,6 +70,45 @@ class PublicPractitionerView(APIView):
         return Response({
             "practitioner": PublicPractitionerSerializer(practitioner).data,
             "available_slots": PublicSlotSerializer(slots, many=True).data,
+        })
+
+
+class PublicSuggestSlotsView(APIView):
+    """
+    POST /book/<slug>/suggest/
+    Réservation en langage naturel : « un rdv mardi après-midi » -> créneaux réels
+    correspondants. Le LLM n'interprète que la phrase ; les créneaux viennent de la base.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AISuggestRateThrottle]
+
+    def post(self, request, slug):
+        practitioner = get_object_or_404(Practitioner, booking_page_slug=slug, is_active=True)
+
+        if not practitioner.owner.is_subscription_active:
+            return Response({"error": "Réservation en ligne indisponible."}, status=503)
+
+        serializer = PublicSuggestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        try:
+            prefs, slots = ai_booking.suggest_slots(practitioner, serializer.validated_data["message"])
+        except ai_booking.AIBookingUnavailable:
+            return Response({"error": "L'assistant de réservation n'est pas disponible."}, status=503)
+        except ai_booking.AIBookingNotUnderstood:
+            return Response(
+                {"error": "Précisez un jour ou un moment, par exemple « mardi après-midi »."}, status=422
+            )
+        except ai_booking.AIBookingError:
+            return Response(
+                {"error": "L'assistant est momentanément indisponible. Choisissez un créneau dans le calendrier."},
+                status=502,
+            )
+
+        return Response({
+            "interpreted": prefs.describe(),
+            "slots": PublicSlotSerializer(slots, many=True).data,
         })
 
 

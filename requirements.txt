@@ -22,6 +22,9 @@ sendgrid==6.11
 reportlab==4.2
 weasyprint==62.3
 
+# IA (réservation en langage naturel)
+anthropic==0.75.0
+
 # Monitoring
 sentry-sdk==2.14
 

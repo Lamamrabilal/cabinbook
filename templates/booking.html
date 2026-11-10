@@ -54,6 +54,13 @@
     .slot-btn { padding: 0.6rem 0.5rem; border: 1px solid var(--border); border-radius: 10px; background: var(--white); font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500; color: var(--navy); cursor: pointer; text-align: center; transition: all 0.15s; }
     .slot-btn:hover { border-color: var(--teal); background: var(--teal-lt); color: var(--teal); }
     .slot-btn.selected { background: var(--teal); color: var(--white); border-color: var(--teal); }
+    .ai-card { margin-bottom: 1rem; }
+    .ai-row { display: flex; gap: 0.5rem; }
+    .ai-row input { flex: 1; min-width: 0; }
+    .ai-btn { padding: 0.7rem 1rem; border: none; border-radius: 10px; background: var(--teal); color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    .ai-btn:disabled { opacity: 0.6; cursor: wait; }
+    .ai-hint { font-size: 0.78rem; color: var(--slate); margin-top: 0.5rem; }
+    .ai-result { margin-top: 1rem; }
     .no-slots { color: var(--slate); font-size: 0.875rem; font-style: italic; padding: 1rem 0; }
     .form-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
@@ -114,7 +121,10 @@ let state = {
   currentMonth: new Date(),
   appointment: null,
   error: null,
+  ai: { text: '', loading: false, interpreted: null, slots: null, error: null },
 };
+
+const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const fmt = (dt) => new Date(dt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const fmtDate = (dt) => new Date(dt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -126,6 +136,21 @@ async function fetchPractitioner() {
   const res = await fetch(`${API_BASE}/api/public/book/${slug}/`);
   if (!res.ok) throw new Error("Praticien introuvable ou indisponible.");
   return res.json();
+}
+
+async function suggestSlots(message) {
+  const res = await fetch(`${API_BASE}/api/public/book/${slug}/suggest/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(res.status === 429
+      ? "Trop de demandes, réessayez plus tard ou utilisez le calendrier."
+      : (data.error || data.message?.[0] || "Assistant indisponible, utilisez le calendrier."));
+  }
+  return data;
 }
 
 async function bookAppointment(formData, slotId) {
@@ -215,6 +240,23 @@ function renderStep1() {
     ${renderPractitionerCard()}
     ${renderStepper()}
     ${state.error ? `<div class="error-msg">${state.error}</div>` : ''}
+    <div class="form-card ai-card">
+      <p class="section-title">Décrivez quand vous êtes disponible</p>
+      <div class="ai-row">
+        <input id="aiText" type="text" maxlength="300" value="${esc(state.ai.text)}" placeholder="Ex. : un mardi après-midi la semaine prochaine" />
+        <button class="ai-btn" id="aiBtn" ${state.ai.loading ? 'disabled' : ''}>${state.ai.loading ? 'Recherche…' : 'Trouver'}</button>
+      </div>
+      <p class="ai-hint">Indiquez uniquement des jours ou des horaires, pas d'information de santé. Vous pouvez aussi choisir dans le calendrier ci-dessous.</p>
+      ${state.ai.error ? `<div class="error-msg" style="margin-top:0.75rem;">${esc(state.ai.error)}</div>` : ''}
+      ${state.ai.slots ? `
+        <div class="ai-result">
+          <div class="slots-label">Créneaux trouvés${state.ai.interpreted ? ` — ${esc(state.ai.interpreted)}` : ''}</div>
+          ${state.ai.slots.length
+            ? `<div class="slots-grid">${state.ai.slots.map(s => `
+                <button class="slot-btn" data-slot-id="${s.id}">${esc(fmtDate(s.start_time))}<br>${fmt(s.start_time)}</button>`).join('')}</div>`
+            : `<p class="no-slots">Aucun créneau ne correspond. Essayez un autre moment ou utilisez le calendrier.</p>`}
+        </div>` : ''}
+    </div>
     <div class="form-card">
       <p class="section-title">Choisissez une date</p>
       <div class="calendar-nav">
@@ -302,6 +344,22 @@ function renderStep3() {
 }
 
 function attachEvents() {
+  document.getElementById('aiText')?.addEventListener('input', (e) => { state.ai.text = e.target.value; });
+  document.getElementById('aiText')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('aiBtn').click(); });
+  document.getElementById('aiBtn')?.addEventListener('click', async () => {
+    const message = state.ai.text.trim();
+    if (message.length < 3) { state.ai.error = "Décrivez un jour ou un moment."; render(); return; }
+    state.ai = { ...state.ai, loading: true, error: null, slots: null, interpreted: null };
+    render();
+    try {
+      const data = await suggestSlots(message);
+      state.slots = [...new Map([...state.slots, ...data.slots].map(s => [s.id, s])).values()];
+      state.ai = { ...state.ai, loading: false, interpreted: data.interpreted, slots: data.slots };
+    } catch (err) {
+      state.ai = { ...state.ai, loading: false, error: err.message };
+    }
+    render();
+  });
   document.getElementById('prevMonth')?.addEventListener('click', () => {
     state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() - 1, 1);
     render();

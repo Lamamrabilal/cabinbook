@@ -30,3 +30,10 @@ class TwoFactorRateThrottle(BruteForceRateThrottle):
 
 class PasswordResetRateThrottle(BruteForceRateThrottle):
     scope = "password_reset"
+
+
+class AISuggestRateThrottle(BruteForceRateThrottle):
+    """Endpoint public qui appelle une API LLM payante : 10 requêtes par IP et par heure."""
+    scope = "ai_suggest"
+    num_requests = 10
+    duration = 60 * 60
